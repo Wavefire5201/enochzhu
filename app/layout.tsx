@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Playfair_Display } from "next/font/google";
 import localFont from "next/font/local";
@@ -38,6 +39,7 @@ export default function RootLayout({
 				className={`${playfairDisplay.variable} ${plusJakarta.variable} antialiased`}
 			>
 				{children}
+				<Analytics />
 			</body>
 		</html>
 	);
