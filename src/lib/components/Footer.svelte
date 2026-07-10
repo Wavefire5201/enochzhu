@@ -17,7 +17,12 @@ const links = $derived(Object.entries(about.links));
 		<ul class="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-mono text-sm">
 			{#each links as [label, href] (label)}
 				<li>
-					<a class="link-trace text-fg" {href} rel="me noopener">
+					<a
+						class="link-trace text-fg"
+						{href}
+						target="_blank"
+						rel="me noopener noreferrer"
+					>
 						{label}
 					</a>
 				</li>
@@ -29,7 +34,8 @@ const links = $derived(Object.entries(about.links));
 		<a
 			class="link-trace"
 			href="https://github.com/Wavefire5201/enochzhu"
-			rel="noopener"
+			target="_blank"
+			rel="noopener noreferrer"
 		>
 			src
 		</a>

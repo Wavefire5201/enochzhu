@@ -23,7 +23,8 @@ const { projects }: Props = $props();
 								<a
 									{href}
 									class="link-trace project-link"
-									rel="noopener"
+									target="_blank"
+									rel="noopener noreferrer"
 								>
 									{project.meta.title}
 								</a>

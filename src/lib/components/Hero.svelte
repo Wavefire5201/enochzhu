@@ -222,19 +222,6 @@ onDestroy(() => {
 		>
 			enable tilt
 		</button>
-	{:else if tiltStatus}
-		<p
-			class="absolute right-6 bottom-8 z-10 font-mono text-xs text-muted sm:hidden"
-			aria-live="polite"
-		>
-			{#if tiltStatus === "active"}
-				tilt · on
-			{:else if tiltStatus === "listening"}
-				tilt · …
-			{:else}
-				tilt · unavailable
-			{/if}
-		</p>
 	{/if}
 </section>
 
