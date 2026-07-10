@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- ack -->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			// Pick once, before first paint, so the poster and WebGL layer share the
+			// same refresh-scoped image. Avoid an immediate repeat when possible.
+			document.documentElement.classList.add("js");
+			if (location.pathname === "/") {
+				const pairs = ["fog-forest", "mountain", "forest-road", "rain-city"];
+				let previous = null;
+				try {
+					previous = sessionStorage.getItem("hero-pair");
+				} catch {}
+				const choices = pairs.filter((id) => id !== previous);
+				const selected = choices[Math.floor(Math.random() * choices.length)];
+				document.documentElement.dataset.heroPair = selected;
+				try {
+					sessionStorage.setItem("hero-pair", selected);
+				} catch {}
+
+				// Start the exact selected poster while the body is still being parsed.
+				const preload = document.createElement("link");
+				preload.rel = "preload";
+				preload.as = "image";
+				preload.imageSrcset = `/hero/${selected}-poster-800.webp 800w, /hero/${selected}-poster-1600.webp 1600w`;
+				preload.imageSizes = "100vw";
+				preload.fetchPriority = "high";
+				document.head.append(preload);
+			}
+		</script>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

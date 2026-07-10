@@ -1,0 +1,108 @@
+@import "tailwindcss";
+@import "@fontsource-variable/eb-garamond/wght.css";
+@import "@fontsource-variable/eb-garamond/wght-italic.css";
+@import "@fontsource/commit-mono/400.css";
+@import "@fontsource/commit-mono/500.css";
+
+@theme {
+	--font-display: "EB Garamond Variable", Georgia, serif;
+	--font-mono: "Commit Mono", ui-monospace, "SF Mono", monospace;
+
+	/* forest and mountain: deep greens, cold grays, fog */
+	--color-bg: #0c110e;
+	--color-surface: #121a15;
+	--color-line: #1f2a23;
+	--color-fg: #b6c2b9;
+	--color-bright: #e6ebe7;
+	--color-muted: #7d8c82;
+	/* the one warm accent — means something when it appears */
+	--color-ember: #c9884e;
+}
+
+html {
+	background-color: var(--color-bg);
+	color: var(--color-fg);
+	color-scheme: dark;
+	scroll-behavior: smooth;
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-line) transparent;
+}
+
+body {
+	font-family: var(--font-display);
+	-webkit-font-smoothing: antialiased;
+}
+
+::selection {
+	background-color: var(--color-ember);
+	color: var(--color-bg);
+}
+
+:focus-visible {
+	outline: 2px solid var(--color-ember);
+	outline-offset: 2px;
+}
+
+/* A restrained signal trace shared by navigation and inline links. */
+.link-trace {
+	position: relative;
+	display: inline-block;
+	transition:
+		color 180ms ease,
+		text-shadow 180ms ease;
+}
+
+.link-trace::before {
+	position: absolute;
+	right: 0;
+	bottom: -0.2em;
+	left: 0;
+	height: 1px;
+	background: currentColor;
+	content: "";
+	transform: scaleX(0);
+	transform-origin: right;
+	transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.link-trace:is(:hover, :focus-visible, :active) {
+	color: var(--color-ember);
+	text-shadow: 0 0 1rem color-mix(in srgb, var(--color-ember) 45%, transparent);
+}
+
+.link-trace:is(:hover, :focus-visible, :active)::before {
+	transform: scaleX(1);
+	transform-origin: left;
+}
+
+.project-link::after {
+	display: inline-block;
+	margin-left: 0.4em;
+	font-family: var(--font-mono);
+	font-size: 0.65em;
+	content: "↗";
+	opacity: 0;
+	transform: translate(-0.3em, 0.25em);
+	transition:
+		opacity 180ms ease,
+		transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.project-link:is(:hover, :focus-visible, :active)::after {
+	opacity: 1;
+	transform: translate(0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
