@@ -179,6 +179,11 @@ export async function createGlyphRenderer(
 
 	// sizing ------------------------------------------------------------
 	const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+	const mobileInput =
+		window.matchMedia("(max-width: 639px)").matches ||
+		window.matchMedia("(pointer: coarse)").matches ||
+		navigator.maxTouchPoints > 0;
+	const glyphScale = mobileInput ? 0.8 : 1;
 	let uvScale: [number, number] = [1, 1];
 	let uvOffset: [number, number] = [0, 0];
 
@@ -245,21 +250,29 @@ export async function createGlyphRenderer(
 	// the page was opened. Touch dragging remains a fallback.
 	let neutralBeta: number | null = null;
 	let neutralGamma: number | null = null;
-	let orientationEnabled = false;
+	let neutralMotionX: number | null = null;
+	let neutralMotionY: number | null = null;
+	let sensorsEnabled = false;
 	let orientationSeen = false;
-	let orientationTimer: ReturnType<typeof setTimeout> | undefined;
+	let sensorSeen = false;
+	let sensorTimer: ReturnType<typeof setTimeout> | undefined;
 	const clampTilt = (value: number): number => Math.max(-1, Math.min(1, value));
+	const markSensorActive = (): void => {
+		if (sensorSeen) return;
+		sensorSeen = true;
+		clearTimeout(sensorTimer);
+		opts.onTiltStatus?.("active");
+	};
 	const resetOrientation = (): void => {
 		neutralBeta = null;
 		neutralGamma = null;
+		neutralMotionX = null;
+		neutralMotionY = null;
 	};
 	const onDeviceOrientation = (e: DeviceOrientationEvent): void => {
 		if (e.beta === null || e.gamma === null) return;
-		if (!orientationSeen) {
-			orientationSeen = true;
-			clearTimeout(orientationTimer);
-			opts.onTiltStatus?.("active");
-		}
+		orientationSeen = true;
+		markSensorActive();
 		if (neutralBeta === null || neutralGamma === null) {
 			neutralBeta = e.beta;
 			neutralGamma = e.gamma;
@@ -276,18 +289,47 @@ export async function createGlyphRenderer(
 		target.px = -9999;
 		target.py = -9999;
 	};
-	const enableOrientation = (): void => {
-		if (orientationEnabled) return;
-		orientationEnabled = true;
+	const onDeviceMotion = (e: DeviceMotionEvent): void => {
+		// Orientation has cleaner axes when both sources are available.
+		if (orientationSeen) return;
+		const gravity = e.accelerationIncludingGravity;
+		if (gravity?.x === null || gravity?.y === null || !gravity) return;
+		markSensorActive();
+		if (neutralMotionX === null || neutralMotionY === null) {
+			neutralMotionX = gravity.x;
+			neutralMotionY = gravity.y;
+			return;
+		}
+
+		let x = (gravity.x - neutralMotionX) / 2.5;
+		let y = -(gravity.y - neutralMotionY) / 2.5;
+		const angle = screen.orientation?.angle ?? 0;
+		if (angle === 90) [x, y] = [-y, x];
+		else if (angle === 270 || angle === -90) [x, y] = [y, -x];
+		target.x = clampTilt(x);
+		target.y = clampTilt(y);
+		target.px = -9999;
+		target.py = -9999;
+	};
+	const enableSensors = (): void => {
+		if (sensorsEnabled) return;
+		sensorsEnabled = true;
 		opts.onTiltStatus?.("listening");
-		window.addEventListener("deviceorientation", onDeviceOrientation, {
-			passive: true,
-		});
+		if (orientationApi) {
+			window.addEventListener("deviceorientation", onDeviceOrientation, {
+				passive: true,
+			});
+		}
+		if (motionApi) {
+			window.addEventListener("devicemotion", onDeviceMotion, {
+				passive: true,
+			});
+		}
 		window.addEventListener("orientationchange", resetOrientation, {
 			passive: true,
 		});
-		orientationTimer = setTimeout(() => {
-			if (!orientationSeen) opts.onTiltStatus?.("unavailable");
+		sensorTimer = setTimeout(() => {
+			if (!sensorSeen) opts.onTiltStatus?.("unavailable");
 		}, 2500);
 	};
 	type OrientationPermission = typeof DeviceOrientationEvent & {
@@ -297,11 +339,27 @@ export async function createGlyphRenderer(
 		typeof DeviceOrientationEvent === "undefined"
 			? null
 			: (DeviceOrientationEvent as OrientationPermission);
-	const requestOrientation = async (): Promise<void> => {
+	type MotionPermission = typeof DeviceMotionEvent & {
+		requestPermission?: () => Promise<"granted" | "denied">;
+	};
+	const motionApi =
+		typeof DeviceMotionEvent === "undefined"
+			? null
+			: (DeviceMotionEvent as MotionPermission);
+	const requestSensors = async (): Promise<void> => {
 		try {
-			const permission = await orientationApi?.requestPermission?.();
-			if (permission === "granted") {
-				enableOrientation();
+			// Invoke both permission methods synchronously inside the click gesture;
+			// awaiting one before calling the other loses user activation on iOS.
+			const requests: Promise<"granted" | "denied">[] = [];
+			if (typeof orientationApi?.requestPermission === "function") {
+				requests.push(orientationApi.requestPermission());
+			}
+			if (typeof motionApi?.requestPermission === "function") {
+				requests.push(motionApi.requestPermission());
+			}
+			const permissions = await Promise.all(requests);
+			if (permissions.some((permission) => permission === "granted")) {
+				enableSensors();
 			} else {
 				opts.onTiltStatus?.("denied");
 			}
@@ -309,16 +367,15 @@ export async function createGlyphRenderer(
 			opts.onTiltStatus?.("denied");
 		}
 	};
-	const mobileInput =
-		window.matchMedia("(max-width: 639px)").matches ||
-		window.matchMedia("(pointer: coarse)").matches ||
-		navigator.maxTouchPoints > 0;
-	if (mobileInput && orientationApi) {
-		if (typeof orientationApi.requestPermission === "function") {
+	if (mobileInput && (orientationApi || motionApi)) {
+		const needsPermission =
+			typeof orientationApi?.requestPermission === "function" ||
+			typeof motionApi?.requestPermission === "function";
+		if (needsPermission) {
 			opts.onTiltStatus?.("needs-permission");
-			window.addEventListener("hero-request-tilt", requestOrientation);
+			window.addEventListener("hero-request-tilt", requestSensors);
 		} else {
-			enableOrientation();
+			enableSensors();
 		}
 	} else if (mobileInput) {
 		opts.onTiltStatus?.("unavailable");
@@ -353,7 +410,7 @@ export async function createGlyphRenderer(
 		gl.uniform1f(loc.time, time);
 		gl.uniform2f(loc.pointer, eased.x, eased.y);
 		gl.uniform2f(loc.cursorPx, target.px, target.py);
-		gl.uniform1f(loc.cellSize, Math.max(2, params.cellSize) * dpr);
+		gl.uniform1f(loc.cellSize, Math.max(2, params.cellSize * glyphScale) * dpr);
 		gl.uniform1f(loc.ditherBlend, params.ditherBlend);
 		gl.uniform1f(loc.contrast, params.contrast);
 		gl.uniform1f(loc.gamma, params.gamma);
@@ -393,12 +450,13 @@ export async function createGlyphRenderer(
 		destroy(): void {
 			destroyed = true;
 			stop();
-			clearTimeout(orientationTimer);
+			clearTimeout(sensorTimer);
 			observer.disconnect();
 			window.removeEventListener("pointermove", onPointerMove);
 			window.removeEventListener("pointerout", onPointerOut);
-			window.removeEventListener("hero-request-tilt", requestOrientation);
+			window.removeEventListener("hero-request-tilt", requestSensors);
 			window.removeEventListener("deviceorientation", onDeviceOrientation);
+			window.removeEventListener("devicemotion", onDeviceMotion);
 			window.removeEventListener("orientationchange", resetOrientation);
 			canvas.removeEventListener("webglcontextlost", onContextLost);
 			gl.deleteProgram(program);
