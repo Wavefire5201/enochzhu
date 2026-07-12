@@ -1,77 +1,89 @@
 <script lang="ts">
-import { browser } from "$app/environment";
-import { page } from "$app/state";
-import GlyphCanvas from "$lib/hero/GlyphCanvas.svelte";
-import { DEFAULT_CHARSET } from "$lib/hero/glyph-atlas";
-import { defaultGlyphParams, type GlyphParams } from "$lib/hero/glyph-params";
-import { heroPairs } from "$lib/hero/pairs";
+	import { browser } from "$app/environment";
+	import { page } from "$app/state";
+	import GlyphCanvas from "$lib/hero/GlyphCanvas.svelte";
+	import { DEFAULT_CHARSET } from "$lib/hero/glyph-atlas";
+	import { defaultGlyphParams, type GlyphParams } from "$lib/hero/glyph-params";
+	import { heroPairs } from "$lib/hero/pairs";
 
-// searchParams are unreadable during prerender; poster capture passes them
-// at runtime only
-let params = $state<GlyphParams>({ ...defaultGlyphParams });
-let pairId = $state(
-	(browser ? page.url.searchParams.get("pair") : null) ?? heroPairs[0].id,
-);
-let charset = $state(DEFAULT_CHARSET);
-let forceFallback = $state(false);
-
-const hideUi = browser && page.url.searchParams.get("hideui") === "1";
-const pair = $derived(heroPairs.find((p) => p.id === pairId) ?? heroPairs[0]);
-
-// Fallback decisions (PRD §6): reduced motion or no WebGL2 → static image.
-let reducedMotion = $state(false);
-let webglOk = $state(true);
-
-$effect(() => {
-	const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-	reducedMotion = mq.matches;
-	const update = (e: MediaQueryListEvent) => {
-		reducedMotion = e.matches;
-	};
-	mq.addEventListener("change", update);
-
-	webglOk = document.createElement("canvas").getContext("webgl2") !== null;
-
-	return () => mq.removeEventListener("change", update);
-});
-
-const useFallback = $derived(reducedMotion || !webglOk || forceFallback);
-
-interface Slider {
-	key: keyof GlyphParams;
-	label: string;
-	min: number;
-	max: number;
-	step: number;
-}
-
-const sliders: Slider[] = [
-	{ key: "cellSize", label: "cell size", min: 4, max: 32, step: 1 },
-	{ key: "ditherBlend", label: "dither blend", min: 0, max: 1, step: 0.01 },
-	{ key: "contrast", label: "contrast", min: 0.5, max: 2, step: 0.05 },
-	{ key: "gamma", label: "gamma", min: 0.4, max: 2, step: 0.05 },
-	{ key: "flowScale", label: "flow scale", min: 0.5, max: 10, step: 0.1 },
-	{ key: "flowSpeed", label: "flow speed", min: 0, max: 0.3, step: 0.005 },
-	{ key: "parallax", label: "parallax", min: 0, max: 0.08, step: 0.002 },
-	{ key: "cursorRadius", label: "cursor radius", min: 40, max: 400, step: 10 },
-	{
-		key: "cursorStrength",
-		label: "cursor strength",
-		min: 0,
-		max: 1,
-		step: 0.05,
-	},
-	{ key: "baseTint", label: "photo base", min: 0, max: 1, step: 0.02 },
-	{ key: "cursorReveal", label: "cursor reveal", min: 0, max: 1, step: 0.05 },
-	{ key: "damp", label: "damp", min: 0.5, max: 6, step: 0.1 },
-	{ key: "sparkAmount", label: "spark (ships 0)", min: 0, max: 1, step: 0.05 },
-];
-
-function copyParams() {
-	navigator.clipboard.writeText(
-		JSON.stringify({ pair: pairId, charset, ...params }, null, 2),
+	// searchParams are unreadable during prerender; poster capture passes them
+	// at runtime only
+	let params = $state<GlyphParams>({ ...defaultGlyphParams });
+	let pairId = $state(
+		(browser ? page.url.searchParams.get("pair") : null) ?? heroPairs[0].id,
 	);
-}
+	let charset = $state(DEFAULT_CHARSET);
+	let forceFallback = $state(false);
+
+	const hideUi = browser && page.url.searchParams.get("hideui") === "1";
+	const pair = $derived(heroPairs.find((p) => p.id === pairId) ?? heroPairs[0]);
+
+	// Fallback decisions (PRD §6): reduced motion or no WebGL2 → static image.
+	let reducedMotion = $state(false);
+	let webglOk = $state(true);
+
+	$effect(() => {
+		const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+		reducedMotion = mq.matches;
+		const update = (e: MediaQueryListEvent) => {
+			reducedMotion = e.matches;
+		};
+		mq.addEventListener("change", update);
+
+		webglOk = document.createElement("canvas").getContext("webgl2") !== null;
+
+		return () => mq.removeEventListener("change", update);
+	});
+
+	const useFallback = $derived(reducedMotion || !webglOk || forceFallback);
+
+	interface Slider {
+		key: keyof GlyphParams;
+		label: string;
+		min: number;
+		max: number;
+		step: number;
+	}
+
+	const sliders: Slider[] = [
+		{ key: "cellSize", label: "cell size", min: 4, max: 32, step: 1 },
+		{ key: "ditherBlend", label: "dither blend", min: 0, max: 1, step: 0.01 },
+		{ key: "contrast", label: "contrast", min: 0.5, max: 2, step: 0.05 },
+		{ key: "gamma", label: "gamma", min: 0.4, max: 2, step: 0.05 },
+		{ key: "flowScale", label: "flow scale", min: 0.5, max: 10, step: 0.1 },
+		{ key: "flowSpeed", label: "flow speed", min: 0, max: 0.3, step: 0.005 },
+		{ key: "parallax", label: "parallax", min: 0, max: 0.08, step: 0.002 },
+		{
+			key: "cursorRadius",
+			label: "cursor radius",
+			min: 40,
+			max: 400,
+			step: 10,
+		},
+		{
+			key: "cursorStrength",
+			label: "cursor strength",
+			min: 0,
+			max: 1,
+			step: 0.05,
+		},
+		{ key: "baseTint", label: "photo base", min: 0, max: 1, step: 0.02 },
+		{ key: "cursorReveal", label: "cursor reveal", min: 0, max: 1, step: 0.05 },
+		{ key: "damp", label: "damp", min: 0.5, max: 6, step: 0.1 },
+		{
+			key: "sparkAmount",
+			label: "spark (ships 0)",
+			min: 0,
+			max: 1,
+			step: 0.05,
+		},
+	];
+
+	function copyParams() {
+		navigator.clipboard.writeText(
+			JSON.stringify({ pair: pairId, charset, ...params }, null, 2),
+		);
+	}
 </script>
 
 <svelte:head>
@@ -103,7 +115,10 @@ function copyParams() {
 
 		<label class="mb-2 block">
 			<span class="mb-1 block text-neutral-500">pair</span>
-			<select bind:value={pairId} class="w-full rounded border border-white/10 bg-black/60 p-1">
+			<select
+				bind:value={pairId}
+				class="w-full rounded border border-white/10 bg-black/60 p-1"
+			>
 				{#each heroPairs as p (p.id)}
 					<option value={p.id}>{p.label}</option>
 				{/each}

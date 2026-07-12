@@ -14,9 +14,16 @@ export default defineConfig({
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes("node_modules") ? undefined : true,
+				// mdsvex 0.12.7 injects a deprecated `<script context="module">` into
+				// every compiled .md; silence only that warning, only for .md, so real
+				// warnings in .svelte files still surface. Remove once mdsvex updates.
+				warningFilter: (w) =>
+					!(
+						w.code === "script_context_deprecated" &&
+						w.filename?.endsWith(".md")
+					),
 			},
-
-			adapter: adapter(),
+			adapter: adapter({ fallback: "404.html" }),
 		}),
 	],
 });

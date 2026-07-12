@@ -1,0 +1,39 @@
+{
+	"languages": {
+		"JavaScript": {
+			"language_servers": ["!biome", "..."],
+			"formatter": "prettier",
+			"format_on_save": "on",
+			"code_actions_on_format": {
+				"source.fixAll.biome": false,
+				"source.organizeImports.biome": false
+			}
+		},
+		"TypeScript": {
+			"language_servers": ["!biome", "..."],
+			"formatter": "prettier",
+			"format_on_save": "on",
+			"code_actions_on_format": {
+				"source.fixAll.biome": false,
+				"source.organizeImports.biome": false
+			}
+		},
+		"Svelte": {
+			"language_servers": ["!biome", "..."],
+			"formatter": "prettier",
+			"format_on_save": "on"
+		},
+		"CSS": {
+			"formatter": "prettier",
+			"format_on_save": "on"
+		},
+		"JSON": {
+			"formatter": "prettier",
+			"format_on_save": "on"
+		},
+		"JSONC": {
+			"formatter": "prettier",
+			"format_on_save": "on"
+		}
+	}
+}

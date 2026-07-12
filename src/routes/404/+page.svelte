@@ -1,5 +1,5 @@
 <script lang="ts">
-import FogNotFound from "$lib/components/FogNotFound.svelte";
+	import FogNotFound from "$lib/components/FogNotFound.svelte";
 </script>
 
 <svelte:head>

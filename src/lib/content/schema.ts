@@ -16,7 +16,6 @@ export const projectSchema = z.object({
 	github: z.string().optional(),
 	live: z.string().optional(),
 	featured: z.boolean().default(false),
-	order: z.number().default(99),
 });
 
 export const photoSchema = z.object({
@@ -31,7 +30,20 @@ export const aboutSchema = z.object({
 	name: z.string(),
 	title: z.string(),
 	location: z.string().optional(),
-	edu: z.string().optional(),
+	/**
+	 * Freeform, ordered About rows. Add / reorder / rename sections purely in
+	 * about.md — no schema change needed. Each renders a label plus either
+	 * `items` (a separated list) or `text` (a block; newlines preserved).
+	 */
+	sections: z
+		.array(
+			z.object({
+				label: z.string(),
+				items: z.array(z.string()).optional(),
+				text: z.string().optional(),
+			}),
+		)
+		.default([]),
 	experience: z
 		.array(
 			z.object({
@@ -39,11 +51,13 @@ export const aboutSchema = z.object({
 				organization: z.string(),
 				period: z.string(),
 				location: z.string().optional(),
+				/** optional link to the org/company site */
+				link: z.string().optional(),
+				/** short annotation shown beside the org, e.g. "i made this website" */
+				comment: z.string().optional(),
 			}),
 		)
 		.default([]),
-	stack: z.array(z.string()).default([]),
-	interests: z.array(z.string()).default([]),
 	links: z.record(z.string(), z.string()).default({}),
 });
 
@@ -68,7 +82,19 @@ export const musicSchema = z.object({
 	title: z.string(),
 	artist: z.string().optional(),
 	link: z.string().optional(),
+	/** cover art path (e.g. /music/foo.jpg under static/) */
+	cover: z.string().optional(),
+	/** display string (bare YAML numbers coerced) */
+	year: z.coerce.string().optional(),
+	/** one-line reason this made the cut — Enoch's words, never invented */
+	note: z.string().optional(),
 	order: z.number().default(99),
+});
+
+/** single-entry collection backing /now, same pattern as `about` */
+export const nowSchema = z.object({
+	/** display date, e.g. "2026-07-10" (bare YAML dates arrive as ISO datetimes — trim the time) */
+	updated: z.coerce.string().transform((s) => s.replace(/T.*$/, "")),
 });
 
 export const catSchema = z.object({
@@ -79,6 +105,7 @@ export const catSchema = z.object({
 });
 
 export type Project = z.infer<typeof projectSchema>;
+export type Now = z.infer<typeof nowSchema>;
 export type Photo = z.infer<typeof photoSchema>;
 export type About = z.infer<typeof aboutSchema>;
 export type Thought = z.infer<typeof thoughtSchema>;

@@ -1,0 +1,16 @@
+# Build artifacts & lockfiles
+.svelte-kit
+build
+node_modules
+bun.lock
+
+# Mirrors the old biome ignores
+references
+assets
+notes
+static
+.omc
+.playwright-mcp
+
+# workers/ is a separate sub-project with its own tooling — don't format it from here
+workers

@@ -1,13 +1,13 @@
 <script lang="ts">
-import type { About } from "$lib/content/schema";
+	import type { About } from "$lib/content/schema";
 
-interface Props {
-	about: About;
-}
+	interface Props {
+		about: About;
+	}
 
-const { about }: Props = $props();
+	const { about }: Props = $props();
 
-const links = $derived(Object.entries(about.links));
+	const links = $derived(Object.entries(about.links));
 </script>
 
 <footer class="mx-auto max-w-4xl px-6 pt-24 pb-16">

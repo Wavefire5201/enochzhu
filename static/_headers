@@ -1,0 +1,6 @@
+# Cloudflare Pages headers (replaces vercel.json).
+# Grants the motion sensors the mobile tilt hero relies on
+# (deviceorientation in src/lib/hero/glyph-renderer.ts). `self` matches the
+# browser default allowlist, so this is explicit parity insurance.
+/*
+  Permissions-Policy: accelerometer=(self), gyroscope=(self), magnetometer=(self)

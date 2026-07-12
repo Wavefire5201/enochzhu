@@ -31,3 +31,8 @@ references/
 # ai tooling
 .omc/
 .playwright-mcp/
+
+# internal planning docs (kept local, not in the public repo)
+/PRD.md
+/PRD-music.md
+/CONTENT-NEEDED.md

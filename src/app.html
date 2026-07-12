@@ -6,21 +6,24 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script>
 			// Pick once, before first paint, so the poster and WebGL layer share the
-			// same refresh-scoped image. Avoid an immediate repeat when possible.
+			// same refresh-scoped image. Selected on every page — the 404/fog pages
+			// rotate through the same pool as the hero. Avoid an immediate repeat.
 			document.documentElement.classList.add("js");
-			if (location.pathname === "/") {
-				const pairs = ["fog-forest", "mountain", "forest-road", "rain-city"];
-				let previous = null;
-				try {
-					previous = sessionStorage.getItem("hero-pair");
-				} catch {}
-				const choices = pairs.filter((id) => id !== previous);
-				const selected = choices[Math.floor(Math.random() * choices.length)];
-				document.documentElement.dataset.heroPair = selected;
-				try {
-					sessionStorage.setItem("hero-pair", selected);
-				} catch {}
+			const pairs = ["fog-forest", "mountain", "forest-road", "rain-city"];
+			let previous = null;
+			try {
+				previous = sessionStorage.getItem("hero-pair");
+			} catch {}
+			const choices = pairs.filter((id) => id !== previous);
+			const selected = choices[Math.floor(Math.random() * choices.length)];
+			document.documentElement.dataset.heroPair = selected;
+			try {
+				sessionStorage.setItem("hero-pair", selected);
+			} catch {}
 
+			// Preload only where the backdrop is certain to render — content pages
+			// must not pay for an image they never show.
+			if (location.pathname === "/") {
 				// Start the exact selected poster while the body is still being parsed.
 				const preload = document.createElement("link");
 				preload.rel = "preload";

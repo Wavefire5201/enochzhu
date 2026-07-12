@@ -13,11 +13,7 @@ export interface GlyphRendererOptions {
 }
 
 export type TiltStatus =
-	| "needs-permission"
-	| "listening"
-	| "active"
-	| "denied"
-	| "unavailable";
+	"needs-permission" | "listening" | "active" | "denied" | "unavailable";
 
 export interface GlyphRenderer {
 	setParams(p: GlyphParams): void;

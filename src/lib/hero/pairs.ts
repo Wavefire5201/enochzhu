@@ -14,12 +14,21 @@ export interface HeroPair {
 	aspect: number;
 	/** normalized focal point retained when the landscape source is cropped */
 	focus: readonly [x: number, y: number];
+	/**
+	 * Unsplash attribution, rendered bottom-left over the hero. Omit for
+	 * uncredited/non-Unsplash images. `url` points to the photo's Unsplash page
+	 * (append `?utm_source=enochzhu&utm_medium=referral` per their guidelines).
+	 */
+	credit?: { name: string; url: string };
 }
 
 /**
  * Curated (photo, depth map) pairs. Swapping or adding a pair is data, not
  * code: drop the photo in static/hero/, run scripts/depth/generate-depth.py
- * and scripts/capture-poster.mjs, add an entry here.
+ * and scripts/capture-poster.mjs, add an entry here — and its `credit`.
+ *
+ * To attribute: add `credit: { name: "Jane Doe", url: "https://unsplash.com/photos/…" }`
+ * to a pair below; it appears bottom-left over the hero automatically.
  */
 export const heroPairs: HeroPair[] = [
 	{

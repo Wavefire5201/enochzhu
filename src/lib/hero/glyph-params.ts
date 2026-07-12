@@ -43,12 +43,3 @@ export const defaultGlyphParams: GlyphParams = {
 	ink: "#b6c2b9",
 	damp: 2.0,
 };
-
-/** 404: the image half-dissolved into characters (spec §4). */
-export const lostGlyphParams: GlyphParams = {
-	...defaultGlyphParams,
-	cellSize: 16,
-	contrast: 0.85,
-	flowSpeed: 0.09,
-	cursorStrength: 0.2,
-};

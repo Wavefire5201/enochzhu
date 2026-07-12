@@ -1,12 +1,12 @@
 <script lang="ts">
-import type { Entry } from "$lib/content";
-import type { Photo } from "$lib/content/schema";
+	import type { Entry } from "$lib/content";
+	import type { Photo } from "$lib/content/schema";
 
-interface Props {
-	photos: Entry<Photo>[];
-}
+	interface Props {
+		photos: Entry<Photo>[];
+	}
 
-const { photos }: Props = $props();
+	const { photos }: Props = $props();
 </script>
 
 {#if photos.length > 0}
@@ -25,7 +25,9 @@ const { photos }: Props = $props();
 					/>
 					{#if photo.meta.location || photo.meta.date}
 						<figcaption class="mt-1 font-mono text-xs text-muted">
-							{[photo.meta.location, photo.meta.date].filter(Boolean).join(' — ')}
+							{[photo.meta.location, photo.meta.date]
+								.filter(Boolean)
+								.join(" — ")}
 						</figcaption>
 					{/if}
 				</figure>

@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"target": "es2022",
+		"module": "es2022",
+		"moduleResolution": "bundler",
+		"lib": ["es2022"],
+		// workers runtime globals come from `wrangler types`; @types/bun would
+		// conflict with them, so tests live under test/ with their own tsconfig
+		"types": [],
+		"strict": true,
+		"noEmit": true,
+		"skipLibCheck": true,
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true
+	},
+	"include": ["src", "worker-configuration.d.ts"]
+}

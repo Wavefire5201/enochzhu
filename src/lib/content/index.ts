@@ -4,6 +4,7 @@ import {
 	aboutSchema,
 	catSchema,
 	musicSchema,
+	nowSchema,
 	photoSchema,
 	projectSchema,
 	thoughtSchema,
@@ -47,10 +48,26 @@ function load<S extends z.ZodType>(
 const byOrder = <T extends { meta: { order?: number } }>(a: T, b: T) =>
 	(a.meta.order ?? 99) - (b.meta.order ?? 99);
 
+/**
+ * Projects self-order from data they already carry — no manual ordinals.
+ * Ongoing ("now"/"present") ranks as newest, then most-recent year; `featured`
+ * pins to the top and title is the deterministic tiebreak.
+ */
+function recencyKey(year: string | undefined): number {
+	if (!year) return 0;
+	if (/now|present|current|ongoing/i.test(year)) return 9999;
+	const found = year.match(/\d{4}/g);
+	return found ? Math.max(...found.map(Number)) : 0;
+}
+
 export const projects = load(
 	import.meta.glob("/src/content/projects/*.md", { eager: true }),
 	projectSchema,
-).sort(byOrder);
+).sort((a, b) => {
+	if (a.meta.featured !== b.meta.featured) return a.meta.featured ? -1 : 1;
+	const byYear = recencyKey(b.meta.year) - recencyKey(a.meta.year);
+	return byYear !== 0 ? byYear : a.meta.title.localeCompare(b.meta.title);
+});
 
 export const photos = load(
 	import.meta.glob("/src/content/photos/*.md", { eager: true }),
@@ -79,6 +96,12 @@ export const music = load(
 	import.meta.glob("/src/content/music/*.md", { eager: true }),
 	musicSchema,
 ).sort(byOrder);
+
+/** single-entry collection; undefined until src/content/now/now.md exists */
+export const now = load(
+	import.meta.glob("/src/content/now/*.md", { eager: true }),
+	nowSchema,
+)[0];
 
 export const cats = load(
 	import.meta.glob("/src/content/cats/*.md", { eager: true }),
