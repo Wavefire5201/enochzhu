@@ -1,0 +1,9 @@
+---
+kind: album
+title: title
+artist: artist
+year: 2000
+cover: /music/cover.jpg
+video: /music/cover.mp4
+color: "#da1202"
+---
