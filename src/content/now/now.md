@@ -1,5 +1,5 @@
 ---
-updated: 2026-07-12
+updated: 2026-07-15
 ---
 
 <!--
@@ -19,3 +19,7 @@ recently-played list appear below this prose automatically.
 ## currently reading
 
 - the dark forest by cixin liu
+
+## currently learning
+
+- to play *arabesque no. 1* by claude debussy

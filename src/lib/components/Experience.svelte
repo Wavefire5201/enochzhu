@@ -17,7 +17,7 @@
 		<ol class="mt-8 divide-y divide-line border-y border-line">
 			{#each about.experience as item (`${item.organization}-${item.period}`)}
 				<li
-					class="grid gap-2 py-5 sm:grid-cols-[1fr_auto] sm:items-baseline sm:gap-8"
+					class="relative grid gap-2 py-5 sm:grid-cols-[1fr_auto] sm:items-baseline sm:gap-8"
 				>
 					<div>
 						<h3 class="font-display text-lg text-bright">
@@ -33,8 +33,10 @@
 							{:else}
 								{item.organization}
 							{/if}{#if item.comment}<span
-									class="exp-note ml-2 inline-block align-middle font-mono text-xs text-ember italic"
-									>{item.comment}</span
+									class="exp-note ml-2 hidden align-middle font-mono text-xs text-ember italic sm:inline-block"
+									><span aria-hidden="true" class="mr-3"
+										>←
+									</span>{item.comment}</span
 								>{/if}
 						</h3>
 						<p class="mt-2.5 font-mono text-xs text-fg">{item.role}</p>
@@ -43,6 +45,33 @@
 						{/if}
 					</div>
 					<time class="font-mono text-xs text-muted">{item.period}</time>
+
+					{#if item.comment}
+						<!-- mobile: the note floats over the entry's empty right side; one
+						     continuous loop-the-loop stroke curls up-left toward the org
+						     (desktop shows the inline note above) -->
+						<div
+							class="exp-note pointer-events-none absolute right-1 bottom-2 flex flex-col items-end text-ember sm:hidden"
+						>
+							<svg
+								viewBox="0 0 120 100"
+								class="mr-8 mb-2 h-14 w-17"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+								transform="matrix(0 1 1 0 0 0)"
+							>
+								<path
+									d="M106 86 C 90 92, 74 90, 64 80 C 52 68, 58 50, 72 52 C 84 54, 82 70, 66 72 C 46 74, 28 58, 22 34"
+								/>
+								<path d="M22 34 l 10 8 M22 34 l -5 12" />
+							</svg>
+							<span class="font-mono text-xs italic">{item.comment}</span>
+						</div>
+					{/if}
 				</li>
 			{/each}
 		</ol>
@@ -50,7 +79,6 @@
 {/if}
 
 <style>
-	/* the "i made this website" note gently drifts — a slow, floating loop */
 	.exp-note {
 		animation: exp-drift 5s ease-in-out infinite;
 	}

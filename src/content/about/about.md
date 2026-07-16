@@ -13,7 +13,7 @@ experience:
     link: https://www.bellflight.com/
   - role: director of external technologies
     organization: sustainable building initiative (sbi)
-    comment: <- i made this website!
+    comment: i made this website!
     period: 2024–now
     link: https://utsbi.org/
 sections:
