@@ -6,15 +6,33 @@
 	import Music from "$lib/components/Music.svelte";
 	import Photos from "$lib/components/Photos.svelte";
 	import Projects from "$lib/components/Projects.svelte";
+	import Seo from "$lib/components/Seo.svelte";
 	import { about, music, photos, projects } from "$lib/content";
+
+	// Person structured data for richer search results
+	const jsonld = about
+		? JSON.stringify({
+				"@context": "https://schema.org",
+				"@type": "Person",
+				name: about.meta.name,
+				url: "https://enochzhu.com",
+				jobTitle: about.meta.title,
+				sameAs: Object.values(about.meta.links).filter((u) =>
+					u.startsWith("http"),
+				),
+			})
+		: null;
 </script>
 
+<Seo
+	title="enoch zhu — cs @ ut austin"
+	description="enoch zhu — cs @ ut austin. projects and photos."
+/>
+
 <svelte:head>
-	<title>enoch zhu</title>
-	<meta
-		name="description"
-		content="enoch zhu — cs @ ut austin. projects and photos."
-	/>
+	{#if jsonld}
+		{@html `<script type="application/ld+json">${jsonld}</script>`}
+	{/if}
 </svelte:head>
 
 <main>

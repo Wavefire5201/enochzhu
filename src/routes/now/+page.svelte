@@ -1,15 +1,18 @@
 <script lang="ts">
 	import FogNotFound from "$lib/components/FogNotFound.svelte";
+	import Seo from "$lib/components/Seo.svelte";
 	import { now } from "$lib/content";
 	import NowPlayingCard from "$lib/listening/NowPlayingCard.svelte";
 	import RecentTracks from "$lib/listening/RecentTracks.svelte";
 </script>
 
+{#if now}
+	<Seo title="now — enoch zhu" description="what enoch is doing now" />
+{/if}
+
 <svelte:head>
-	<title>{now ? "now — enoch zhu" : "404"}</title>
-	{#if now}
-		<meta name="description" content="what enoch is doing now" />
-	{:else}
+	{#if !now}
+		<title>404</title>
 		<meta name="robots" content="noindex" />
 	{/if}
 </svelte:head>
