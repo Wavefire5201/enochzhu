@@ -14,7 +14,11 @@
 
 	// The static render is the default and the fallback. Text renders first;
 	// the WebGL bundle is lazily imported and never blocks paint (PRD §6).
-	let pair = $state<HeroPair | null>(null);
+	// pairId drives the backdrop; the switcher below can rebind it.
+	let pairId = $state<string | null>(null);
+	const pair = $derived<HeroPair | null>(
+		pairId ? (heroPairById(pairId) ?? heroPairs[0]) : null,
+	);
 	let posterReady = $state(false);
 	let posterEl = $state<HTMLImageElement>();
 	let loaderVisible = $state(false);
@@ -26,6 +30,14 @@
 
 	let GlyphCanvas = $state<Component | null>(null);
 	let tiltStatus = $state<TiltStatus | null>(null);
+
+	let switcherOpacity = $state(1);
+
+	const displayedPairs = $derived(
+		pairId
+			? [heroPairById(pairId)!, ...heroPairs.filter((p) => p.id !== pairId)]
+			: heroPairs,
+	);
 
 	function requestTilt() {
 		window.dispatchEvent(new Event("hero-request-tilt"));
@@ -75,10 +87,9 @@
 		arrivalStarted = performance.now();
 		finishing = false;
 
-		// app.html makes this selection before first paint. Resolve it once here
-		// and pass the same pair through the poster and WebGL layers.
-		pair =
-			heroPairById(document.documentElement.dataset.heroPair) ?? heroPairs[0];
+		// app.html makes this selection before first paint. Resolve it once here;
+		// the switcher can rebind pairId afterwards.
+		pairId = document.documentElement.dataset.heroPair ?? heroPairs[0].id;
 		posterReady = false;
 		void tick().then(() => {
 			if (posterEl?.complete && posterEl.naturalWidth > 0) finishArrival();
@@ -127,6 +138,15 @@
 		clearTimeout(revealTimer);
 		clearTimeout(ackTimer);
 	});
+
+	$effect(() => {
+		const onScroll = () => {
+			const progress = window.scrollY / window.innerHeight;
+			switcherOpacity = Math.max(0, Math.min(1, 1 - (progress - 0.25) / 0.35));
+		};
+		window.addEventListener("scroll", onScroll, { passive: true });
+		return () => window.removeEventListener("scroll", onScroll);
+	});
 </script>
 
 <section class="relative h-svh w-full overflow-hidden bg-bg" aria-label="intro">
@@ -156,10 +176,12 @@
 
 	{#if GlyphCanvas && pair}
 		<div class="absolute inset-0">
-			<GlyphCanvas
-				{pair}
-				ontiltstatus={(status: TiltStatus) => (tiltStatus = status)}
-			/>
+			{#key pair.id}
+				<GlyphCanvas
+					{pair}
+					ontiltstatus={(status: TiltStatus) => (tiltStatus = status)}
+				/>
+			{/key}
 		</div>
 	{/if}
 
@@ -225,18 +247,43 @@
 		<a class="link-trace" href="/now">now</a>
 	</nav>
 
-	{#if pair?.credit}
-		<!-- unsplash attribution for the hero photo; desktop only — the mobile
-		     bottom-left is taken by the section nav and the now-playing bar -->
-		<a
-			href={pair.credit.url}
-			target="_blank"
-			rel="noopener noreferrer"
-			class="link-trace absolute bottom-3 left-6 z-10 hidden font-mono text-[0.65rem] text-muted sm:block"
-		>
-			photo — {pair.credit.name} · unsplash
-		</a>
-	{/if}
+	<!-- backdrop switcher + photo credit; desktop only — the mobile bottom-left
+	     holds the section nav and the now-playing bar -->
+	<div
+		class="absolute bottom-3 left-6 z-10 hidden sm:block"
+		style="opacity:{switcherOpacity}"
+	>
+		<div class="flex items-end gap-2">
+			<span class="font-mono text-[0.65rem] text-muted">backdrop</span>
+			<div class="group flex flex-col items-start">
+				<!-- non-selected options: hidden at rest, reveal upward with stagger -->
+				<div class="flex flex-col-reverse items-start gap-1 pb-1.5">
+					{#each displayedPairs.slice(1) as p, i (p.id)}
+						<button
+							onclick={() => (pairId = p.id)}
+							class="font-mono text-[0.65rem] text-fg opacity-0 transition-opacity duration-300 hover:text-ember group-hover:opacity-100"
+							style="transition-delay:{(i + 1) * 70}ms">{p.label}</button
+						>
+					{/each}
+				</div>
+				<!-- always-visible: selected label -->
+				<span class="font-mono text-[0.65rem] text-ember"
+					>{displayedPairs[0]?.label ?? ""}</span
+				>
+			</div>
+		</div>
+
+		{#if pair?.credit}
+			<a
+				href={pair.credit.url}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="link-trace mt-1.5 block font-mono text-[0.65rem] text-muted"
+			>
+				photo — {pair.credit.name}
+			</a>
+		{/if}
+	</div>
 
 	{#if tiltStatus === "needs-permission"}
 		<button

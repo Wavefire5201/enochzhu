@@ -53,7 +53,11 @@ export const heroPairs: HeroPair[] = [
 		},
 		depth: "/hero/depth/mountain.png",
 		aspect: 1920 / 800,
-		focus: [0.59, 0.5],
+		focus: [0.5, 0.5],
+		credit: {
+			name: "robert haverly",
+			url: "https://unsplash.com/photos/mqpGa3H_w7M?utm_source=enochzhu&utm_medium=referral",
+		},
 	},
 	{
 		id: "forest-road",
@@ -65,7 +69,11 @@ export const heroPairs: HeroPair[] = [
 		},
 		depth: "/hero/depth/forest-road.png",
 		aspect: 1920 / 800,
-		focus: [0.55, 0.5],
+		focus: [0.5, 0.5],
+		credit: {
+			name: "karina skrypnik",
+			url: "https://unsplash.com/photos/-EQ8L9lY50A?utm_source=enochzhu&utm_medium=referral",
+		},
 	},
 	{
 		id: "rain-city",
@@ -77,7 +85,11 @@ export const heroPairs: HeroPair[] = [
 		},
 		depth: "/hero/depth/rain-city.png",
 		aspect: 1920 / 800,
-		focus: [0.53, 0.5],
+		focus: [0.5, 0.5],
+		credit: {
+			name: "kevin bosc",
+			url: "https://unsplash.com/photos/4e9eeHdiBi0?utm_source=enochzhu&utm_medium=referral",
+		},
 	},
 ];
 

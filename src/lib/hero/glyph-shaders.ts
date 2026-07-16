@@ -79,7 +79,10 @@ void main() {
 	vec2 uv = (cellCenter / uResolution) * uUvScale + uUvOffset;
 	uv.y = 1.0 - uv.y;
 
-	float depth = texture(uDepth, uv).r;
+	// depth is packed hi->R, lo->G across two 8-bit channels so it survives the
+	// browser flattening 16-bit textures — reconstruct the full ~16-bit value
+	vec4 dtex = texture(uDepth, uv);
+	float depth = (dtex.r * 65280.0 + dtex.g * 255.0) / 65535.0;
 
 	// fog flow: strongest in the far field
 	float t = uTime * uFlowSpeed;
