@@ -13,26 +13,38 @@
 	let clipEl = $state<HTMLElement>();
 	let segEl = $state<HTMLElement>();
 	let scroll = $state(false);
-	let distPx = $state(0);
 	let durSec = $state(0);
 
-	const GAP = 48; // px between the two looping copies (matches .np-row gap)
+	const GAP = 48; // px trailing gap per copy (matches .np-seg margin-right)
 	const SPEED = 42; // px/second — calm, readable
 
-	// measure on every track change; scroll only when the title overflows
+	// A stable title string. `listening.current` is a fresh object on every poll,
+	// so depending on it would restart the marquee each refresh; the title text
+	// only changes when the track actually changes.
+	const title = $derived(
+		listening.current
+			? `${listening.current.name} — ${listening.current.artist}`
+			: "",
+	);
+	let measuredFor = "";
+
+	// re-measure only when the title text changes; the loop distance is a hard
+	// -50% (see CSS), so this measurement sets the speed, never the wrap point.
 	$effect(() => {
-		void listening.current?.name; // dependency: re-run when the track changes
-		scroll = false; // reset so we measure the true single-copy width
+		const key = title;
 		const clip = clipEl;
 		const seg = segEl;
-		if (!clip || !seg) return;
-		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+		if (!clip || !seg || key === measuredFor) return;
+		measuredFor = key;
+		scroll = false; // reset to a single copy so we measure the true width
+		if (!key || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			return;
+		}
 		const raf = requestAnimationFrame(() => {
-			const textW = seg.offsetWidth;
+			const textW = seg.getBoundingClientRect().width;
 			const clipW = clip.clientWidth;
 			if (textW > clipW + 2) {
-				distPx = textW + GAP;
-				durSec = distPx / SPEED;
+				durSec = (textW + GAP) / SPEED;
 				scroll = true;
 			}
 		});
@@ -75,7 +87,7 @@
 				<span
 					class="np-row"
 					class:np-animate={scroll}
-					style={scroll ? `--dist:${distPx}px; --dur:${durSec}s` : ""}
+					style={scroll ? `--dur:${durSec}s` : ""}
 				>
 					<span
 						bind:this={segEl}
@@ -98,21 +110,9 @@
 {/if}
 
 <style>
-	/* Clip the title with a mask, NOT overflow:hidden — a mask is a paint effect
-	   so the flex baseline stays the text baseline (overflow:hidden would snap it
-	   to the bottom edge and misalign against the label). */
-	.np-clip {
-		-webkit-mask-image: linear-gradient(
-			to right,
-			#000 calc(100% - 1rem),
-			transparent
-		);
-		mask-image: linear-gradient(to right, #000 calc(100% - 1rem), transparent);
-		-webkit-mask-repeat: no-repeat;
-		mask-repeat: no-repeat;
-	}
-
-	/* while scrolling, fade both edges so the loop enters and exits softly */
+	/* A title that fits shows in full — no clipped edge. The fade appears ONLY
+	   while scrolling (marquee), softening both ends of the loop. Masking (a paint
+	   effect, not overflow:hidden) keeps the flex baseline aligned with the label. */
 	.np-scrolling {
 		-webkit-mask-image: linear-gradient(
 			to right,
@@ -128,11 +128,12 @@
 			#000 calc(100% - 1rem),
 			transparent
 		);
+		-webkit-mask-repeat: no-repeat;
+		mask-repeat: no-repeat;
 	}
 
 	.np-row {
 		display: inline-flex;
-		gap: 3rem; /* must equal GAP (48px) in the script */
 		white-space: nowrap;
 	}
 
@@ -140,18 +141,21 @@
 		white-space: nowrap;
 	}
 
-	/* seamless one-direction scroll: the second copy is exactly GAP behind, so
-	   translating by (textWidth + GAP) lands it where the first copy started */
+	/* Each copy carries its own trailing gap, so the row is exactly two identical
+	   units wide. Translating by -50% advances exactly one unit — the loop point
+	   is defined by layout, not a measured pixel width, so it is perfectly
+	   seamless every cycle. */
+	.np-animate .np-seg {
+		margin-right: 3rem;
+	}
+
 	.np-animate {
 		animation: np-scroll var(--dur) linear infinite;
 	}
 
 	@keyframes np-scroll {
-		from {
-			transform: translateX(0);
-		}
 		to {
-			transform: translateX(calc(-1 * var(--dist)));
+			transform: translateX(-50%);
 		}
 	}
 

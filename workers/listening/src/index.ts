@@ -7,8 +7,8 @@
 import { type LastfmRecentTracks, trimFeed } from "./trim";
 
 const LASTFM_API = "https://ws.audioscrobbler.com/2.0/";
-/** edge + browser cache TTL, seconds */
-const CACHE_TTL = 25;
+/** edge + browser cache TTL, seconds — matches the site's 10s poll */
+const CACHE_TTL = 10;
 const TRACK_LIMIT = 12;
 /** album art is immutable — cache it hard once fetched */
 const IMG_CACHE_TTL = 31536000;

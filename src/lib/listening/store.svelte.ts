@@ -25,9 +25,8 @@ export interface Track {
 	playedAt: number | null;
 }
 
-/** poll cadence: quicker while a track is actively playing, calmer otherwise */
-const LIVE_MS = 20_000;
-const IDLE_MS = 60_000;
+/** poll cadence */
+const POLL_MS = 10_000;
 
 class Listening {
 	tracks = $state<Track[]>([]);
@@ -57,10 +56,7 @@ class Listening {
 	async #tick() {
 		if (!document.hidden) await this.#refresh();
 		clearTimeout(this.#timer);
-		this.#timer = setTimeout(
-			() => void this.#tick(),
-			this.live ? LIVE_MS : IDLE_MS,
-		);
+		this.#timer = setTimeout(() => void this.#tick(), POLL_MS);
 	}
 
 	async #refresh() {
