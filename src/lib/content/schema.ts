@@ -84,8 +84,14 @@ export const musicSchema = z.object({
 	link: z.string().optional(),
 	/** cover art path (e.g. /music/foo.jpg under static/) */
 	cover: z.string().optional(),
+	/** optional animated cover — a looping muted mp4 (e.g. /music/foo.mp4);
+	 * the CD wall plays it in place of the still, falling back to the cover */
+	video: z.string().optional(),
 	/** display string (bare YAML numbers coerced) */
 	year: z.coerce.string().optional(),
+	/** dominant cover hex — the CD wall placeholder while art streams in
+	 * (scripts/music/fetch-cover.py extracts it) */
+	color: z.string().optional(),
 	/** one-line reason this made the cut — Enoch's words, never invented */
 	note: z.string().optional(),
 	order: z.number().default(99),

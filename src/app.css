@@ -26,6 +26,10 @@ html {
 	scroll-behavior: smooth;
 	scrollbar-width: thin;
 	scrollbar-color: var(--color-line) transparent;
+	/* full-bleed breakouts (CD wall) use w-screen, which includes the
+	   scrollbar gutter; clip (not hidden — no new scroll container) the
+	   few px of horizontal overhang */
+	overflow-x: clip;
 }
 
 body {

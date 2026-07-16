@@ -16,7 +16,10 @@
 	"dependencies": {
 		"@fontsource-variable/eb-garamond": "^5.2.7",
 		"@fontsource/commit-mono": "^5.2.5",
+		"@threlte/core": "^8.5.16",
+		"@threlte/extras": "^9.21.0",
 		"mdsvex": "^0.12.7",
+		"three": "^0.185.1",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
@@ -26,6 +29,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.1.0",
 		"@types/bun": "^1.3.14",
+		"@types/three": "^0.185.1",
 		"eslint": "^10.7.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.20.0",
