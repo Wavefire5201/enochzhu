@@ -30,6 +30,5 @@
 		</div>
 	</main>
 {:else}
-	<!-- empty collection: indistinguishable from a route that doesn't exist (PRD §5) -->
 	<FogNotFound />
 {/if}

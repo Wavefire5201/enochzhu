@@ -22,6 +22,7 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# docs
 docs/
 notes/
 references/
@@ -30,3 +31,5 @@ references/
 # ai tooling
 .omc/
 .playwright-mcp/
+
+src/routes/proto/
