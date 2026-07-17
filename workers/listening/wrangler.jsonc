@@ -3,7 +3,9 @@
 	"name": "enochzhu-listening",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-07-10",
-	"compatibility_flags": ["nodejs_compat"],
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
 	"workers_dev": true,
 	"preview_urls": false,
 	"observability": {
@@ -15,4 +17,12 @@
 		"ALLOWED_ORIGINS": "https://enochzhu.com,https://www.enochzhu.com,http://localhost:5173,http://192.168.0.145:5173,https://enochzhu.pages.dev",
 	},
 	// LASTFM_API_KEY is a secret: `wrangler secret put LASTFM_API_KEY`
+	// Ambient visitor trace. Create once, then paste the id below:
+	//   wrangler kv namespace create VISITS
+	"kv_namespaces": [
+		{
+			"binding": "VISITS",
+			"id": "a103c623707547c79bb6b465341649cc"
+		}
+	],
 }

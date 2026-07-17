@@ -1,5 +1,6 @@
 <script lang="ts">
 	import About from "$lib/components/About.svelte";
+	import Contact from "$lib/components/Contact.svelte";
 	import Experience from "$lib/components/Experience.svelte";
 	import Footer from "$lib/components/Footer.svelte";
 	import Hero from "$lib/components/Hero.svelte";
@@ -52,9 +53,10 @@
 		<About about={about.meta} />
 	{/if}
 
-	<Music {music} />
-
 	{#if about}
-		<Footer about={about.meta} />
+		<Contact about={about.meta} />
 	{/if}
+
+	<Music {music} />
+	<Footer />
 </main>

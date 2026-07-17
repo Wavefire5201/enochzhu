@@ -15,6 +15,8 @@ const IMG_CACHE_TTL = 31536000;
 /** only these hosts may be proxied through /img (never an open proxy) */
 const IMG_HOSTS = new Set(["lastfm.freetls.fastly.net"]);
 
+type VisitEnv = Env & { BLACKLISTED_LOCATIONS?: string };
+
 export default {
 	async fetch(request, env): Promise<Response> {
 		const cors = corsHeaders(request.headers.get("Origin"), env);
@@ -30,6 +32,12 @@ export default {
 		// that content/DNS blockers flag (same reasoning as the custom domain)
 		if (new URL(request.url).pathname === "/img") {
 			return proxyImage(request);
+		}
+
+		// ambient visitor trace — a cumulative count plus the previous visitor's
+		// coarse trace. Independent of the Last.fm config below.
+		if (new URL(request.url).pathname === "/visit") {
+			return handleVisit(request, env, cors);
 		}
 
 		if (!env.LASTFM_API_KEY || !env.LASTFM_USERNAME) {
@@ -97,6 +105,89 @@ async function proxyImage(request: Request): Promise<Response> {
 	);
 	headers.set("Cache-Control", `public, max-age=${IMG_CACHE_TTL}, immutable`);
 	return new Response(upstream.body, { status: 200, headers });
+}
+
+/**
+ * Ambient visitor trace: a cumulative visit count and the coarse trace (city /
+ * country + when) of the visitor immediately BEFORE this one — so each visitor
+ * sees "someone was here 3h ago from Tokyo". Deliberately privacy-light: the IP
+ * is only used, salted-and-hashed with the UTC date, to dedupe same-day
+ * refreshes (24h TTL); the raw IP is never stored. Best-effort — KV is
+ * eventually consistent and the increment is not atomic, which is fine at this
+ * traffic, and any failure just leaves the trace hidden on the site.
+ */
+async function handleVisit(
+	request: Request,
+	env: Env,
+	cors: Record<string, string>,
+): Promise<Response> {
+	const kv = (env as unknown as { VISITS?: KVNamespace }).VISITS;
+	if (!kv) return json({ error: "not configured" }, 503, cors);
+
+	const cf = request.cf as { city?: string; country?: string } | undefined;
+	const place = [cf?.city, cf?.country].filter(Boolean).join(", ");
+	const isBlacklistedLocation = locationIsBlacklisted(
+		place,
+		(env as VisitEnv).BLACKLISTED_LOCATIONS,
+	);
+
+	const total = parseInt((await kv.get("total")) ?? "0", 10) || 0;
+	const last = (await kv.get("last", "json")) as {
+		t: number;
+		place: string;
+	} | null;
+
+	// dedupe same-day refreshes without keeping the IP: only a salted hash is
+	// stored, and only for a day
+	const ip = request.headers.get("CF-Connecting-IP") ?? "";
+	const day = new Date().toISOString().slice(0, 10);
+	const seenKey = `seen:${await sha256(`${ip}:${day}`)}`;
+	if (await kv.get(seenKey)) {
+		return json({ count: total, last }, 200, cors);
+	}
+
+	const now = Math.floor(Date.now() / 1000);
+	// The new visitor is counted and shown whoever came before them. Blacklisted
+	// locations deliberately do not replace the public trace, so local testing
+	// cannot expose a real city or hide the previous non-blacklisted visitor.
+	await kv.put("total", String(total + 1));
+	if (!isBlacklistedLocation) {
+		await kv.put("last", JSON.stringify({ t: now, place }));
+	}
+	await kv.put(seenKey, "1", { expirationTtl: 86400 });
+	return json({ count: total + 1, last }, 200, cors);
+}
+
+/**
+ * Semicolon-separated, case-insensitive location fragments. We support a
+ * city alone ("chicago") or the exact Cloudflare form ("chicago, us").
+ */
+function locationIsBlacklisted(place: string, configured?: string): boolean {
+	const normalizedPlace = place.trim().toLocaleLowerCase();
+	if (!normalizedPlace || !configured) return false;
+
+	return configured
+		.split(";")
+		.map((entry) => entry.trim().toLocaleLowerCase())
+		.filter(Boolean)
+		.some(
+			(entry) =>
+				entry === normalizedPlace ||
+				normalizedPlace
+					.split(",")
+					.map((part) => part.trim())
+					.includes(entry),
+		);
+}
+
+async function sha256(input: string): Promise<string> {
+	const digest = await crypto.subtle.digest(
+		"SHA-256",
+		new TextEncoder().encode(input),
+	);
+	return [...new Uint8Array(digest)]
+		.map((b) => b.toString(16).padStart(2, "0"))
+		.join("");
 }
 
 function corsHeaders(origin: string | null, env: Env): Record<string, string> {
