@@ -15,7 +15,7 @@ export const musicEntries: (z.input<typeof musicSchema> & { slug: string })[] =
 		},
 		{
 			slug: "equus-asinus",
-			link: "https://open.spotify.com/album/7dJPDPUi94jA91VxG4vZb3?si=XDryAS6PQNWxppLk1L9Aqw",
+			link: "https://open.spotify.com/album/3DMcONcVrHi6yNLwL576GU?si=q52oQr_eRo2cYHQvZgJmqQ",
 			kind: "album",
 			title: "equus asinus",
 			artist: "men i trust",
