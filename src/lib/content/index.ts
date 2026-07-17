@@ -1,5 +1,7 @@
 import type { Component } from "svelte";
 import type { z } from "zod";
+import { musicEntries } from "../../content/music";
+import { projectEntries } from "../../content/projects";
 import {
 	aboutSchema,
 	catSchema,
@@ -15,7 +17,7 @@ export interface Entry<T> {
 	slug: string;
 	meta: T;
 	/** mdsvex-compiled markdown body; render with <svelte:component> / snippet */
-	body: Component;
+	body?: Component;
 }
 
 interface MdModule {
@@ -45,6 +47,21 @@ function load<S extends z.ZodType>(
 	});
 }
 
+/** Load a collection from a typed data array (no markdown body). Validates each
+ * row's fields against the schema; the `slug` travels through untouched. */
+function loadData<S extends z.ZodType>(
+	rows: ({ slug: string } & Record<string, unknown>)[],
+	schema: S,
+): Entry<z.infer<S>>[] {
+	return rows.map(({ slug, ...fields }) => {
+		const parsed = schema.safeParse(fields);
+		if (!parsed.success) {
+			throw new Error(`invalid data entry ${slug}: ${parsed.error.message}`);
+		}
+		return { slug, meta: parsed.data };
+	});
+}
+
 const byOrder = <T extends { meta: { order?: number } }>(a: T, b: T) =>
 	(a.meta.order ?? 99) - (b.meta.order ?? 99);
 
@@ -60,10 +77,7 @@ function recencyKey(year: string | undefined): number {
 	return found ? Math.max(...found.map(Number)) : 0;
 }
 
-export const projects = load(
-	import.meta.glob("/src/content/projects/*.md", { eager: true }),
-	projectSchema,
-).sort((a, b) => {
+export const projects = loadData(projectEntries, projectSchema).sort((a, b) => {
 	if (a.meta.featured !== b.meta.featured) return a.meta.featured ? -1 : 1;
 	const byYear = recencyKey(b.meta.year) - recencyKey(a.meta.year);
 	return byYear !== 0 ? byYear : a.meta.title.localeCompare(b.meta.title);
@@ -92,10 +106,7 @@ export const uses = load(
 	usesSchema,
 ).sort(byOrder);
 
-export const music = load(
-	import.meta.glob("/src/content/music/*.md", { eager: true }),
-	musicSchema,
-).sort(byOrder);
+export const music = loadData(musicEntries, musicSchema).sort(byOrder);
 
 /** single-entry collection; undefined until src/content/now/now.md exists */
 export const now = load(

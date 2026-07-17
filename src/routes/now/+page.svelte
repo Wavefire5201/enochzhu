@@ -33,7 +33,9 @@
 
 		<!-- the prose renders fully without JS; the widgets below are enhancement -->
 		<div class="now-prose mt-10 max-w-prose text-base leading-relaxed text-fg">
-			<now.body />
+			{#if now.body}
+				<now.body />
+			{/if}
 		</div>
 
 		<section
