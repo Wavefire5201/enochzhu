@@ -41,7 +41,11 @@ export const DEFAULT_CD_CASE_SCENE = {
 	stripHeight: 1.25,
 	stripDistance: -2.5,
 	stripSpecular: 18,
-	discRoughness: 0.02,
+	// NOT dead-mirror (0.02): a dead-mirror disc reflects the PMREM environment
+	// at its ~256px cap, which magnifies into visible blocky pixelation on the
+	// big focused disc. A fine satin (0.07) blurs that into a smooth gloss while
+	// the bright HDR window still reads as a diamond glint.
+	discRoughness: 0.07,
 	glassRoughness: 0.01,
 	glassTransmission: 1,
 	glassClearcoat: 1,
@@ -51,10 +55,13 @@ export const DEFAULT_CD_CASE_SCENE = {
 	exposure: 0.95,
 	bloomStrength: 0.35,
 	bloomRadius: 0.4,
-	// linear HDR units: only genuine light SOURCES (windows/lamps) should bleed,
-	// not the merely-bright reflections on the glass — a low threshold blew the
-	// whole disc and lid into a blinding veil against the page
-	bloomThreshold: 3,
+	// linear HDR units, and the ONE knob that separates "too bright" from the
+	// diamond glints: only the brightest specular PEAKS (the sharp window
+	// reflection) clear this and bloom; the merely-bright washes on the lid/disc
+	// stay put. Raised from 3 → 8 to pull back the broad glare while keeping the
+	// sparkle — it isolates bloom without dimming the reflection itself
+	// (glassReflectivity), so the diamonds survive at full strength.
+	bloomThreshold: 8,
 } as const;
 
 /**

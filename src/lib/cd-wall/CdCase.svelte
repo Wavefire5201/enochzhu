@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { T, useTask } from "@threlte/core";
 	import { onDestroy } from "svelte";
-	import type { BufferGeometry, Group, Material } from "three";
+	import type { BufferGeometry, Group, Material, Mesh } from "three";
 	import {
 		BackSide,
 		Color,
@@ -49,6 +49,8 @@
 		/** where an opened case settles, so info can sit beside it rather than under */
 		presentX: number;
 		presentY: number;
+		/** rad/sec the disc turns while this case is open (0 = still) */
+		discSpin: number;
 		caseWidth: number;
 		caseDepth: number;
 		/** where the disc sits: the tray's hub in x/y, its face height in z */
@@ -93,6 +95,7 @@
 		presentScale,
 		presentX,
 		presentY,
+		discSpin,
 		caseWidth,
 		caseDepth,
 		discX,
@@ -109,6 +112,7 @@
 	let outer = $state<Group>();
 	let inner = $state<Group>();
 	let lidPivot = $state<Group>();
+	let discMesh = $state<Mesh>();
 
 	// One pooled mesh, endlessly recycled: which slot (and so which album) it
 	// shows is derived from the scroll offset every frame (PRD-cd-wall §5.1).
@@ -116,12 +120,20 @@
 	let album: CdAlbum | null = null;
 	let slot = Number.NaN;
 	let artMix = 0; // 0 = dominant-color placeholder, 1 = full cover art
-	// HOVER EFFECT — uncomment with the marked block in useTask() to restore.
-	// let hoverAmount = 0;
+	// dock-style hover: the pointed-at case turns to face the viewer and grows a
+	// touch, like a macOS dock icon magnifying under the cursor
+	let hovered = false;
+	let hoverAmount = 0;
 	let forward = 0; // eased pull toward the viewer while inspecting/open
 	let part = 0; // eased sideways step while a neighbor is inspected
 	let lidAmount = 0; // 0 = closed, 1 = fully open
 	let present = 0; // 0 = sits in the row, 1 = squared up and held to camera
+	let discSpinAngle = 0; // accumulates while a case is open — the disc spins up
+
+	// dock hover tuning: how far toward face-on a hover turns the case, and how
+	// much it grows. Deliberately subtle — a nudge that previews the open, not it.
+	const HOVER_FACE = 0.5;
+	const HOVER_SCALE = 0.12;
 
 	// hold-to-inspect: press and hold a case, then drag to turn it 360°
 	let inspect = false;
@@ -250,20 +262,16 @@
 		lidAmount += (lidTarget - lidAmount) * Math.min(1, delta * 5);
 		lidPivot.rotation.y = openAngle * lidAmount;
 
-		/*
-		 * HOVER EFFECT — disabled for now.
-		 * To restore the physical hover lift, uncomment this block and the
-		 * `hoverAmount` declaration near the other per-frame values above,
-		 * plus the `hoverTarget` assignments in assign(), useTask(), enter(),
-		 * and leave().
-		 * The case then slides toward the viewer when the pointer enters it.
-		 *
-		 * hoverAmount += (hoverTarget - hoverAmount) * Math.min(1, delta * 9);
-		 * const forwardTarget = inspect
-		 * 	? 0.9
-		 * 	: Math.max(hoverAmount * 0.18, lidAmount * 0.4);
-		 */
-		const forwardTarget = inspect ? 0.9 : lidAmount * 0.4;
+		// dock-style hover: turn the case toward the viewer and enlarge it a little
+		// while the pointer rests on it. Suppressed once anything is opened, held
+		// for inspection, or the row is being dragged out from under the cursor.
+		const hoverTarget =
+			hovered && openedSlot === null && !inspect && !scroll.dragging ? 1 : 0;
+		hoverAmount += (hoverTarget - hoverAmount) * Math.min(1, delta * 10);
+
+		const forwardTarget = inspect
+			? 0.9
+			: Math.max(lidAmount * 0.4, hoverAmount * 0.15);
 		forward += (forwardTarget - forward) * Math.min(1, delta * 8);
 		inner.position.z = forward;
 
@@ -280,14 +288,26 @@
 		// Hand-inspection overrides it, so a spun case keeps the angle you put it at.
 		const presentTarget = inspect ? 0 : lidAmount;
 		present += (presentTarget - present) * Math.min(1, delta * 5);
-		inner.scale.setScalar(1 + present * presentScale);
+		// hover magnifies only while resting; a fully presented case ignores it
+		inner.scale.setScalar(
+			1 + present * presentScale + (1 - present) * hoverAmount * HOVER_SCALE,
+		);
+
+		// the disc spins up as the case opens — the "cool when you open it" beat.
+		// Keyed to `lidAmount` (lid open), NOT `present`, so hand-turning the case
+		// (which eases `present` to 0) never freezes the disc — it keeps spinning
+		// as long as the lid is up, and coasts to a stop as the case closes.
+		discSpinAngle += delta * discSpin * lidAmount;
+		if (discMesh) discMesh.rotation.z = discSpinAngle;
 
 		// An equirectangular room is infinitely far away: translating a flat case
 		// sideways through it cannot change its reflection. Give resting slots a
 		// small, stable pose that evolves with the shared scroll offset instead.
 		// This changes only the normal seen by the one shared attic environment;
-		// it does not create a per-CD scene, light, or material.
-		const response = reactiveLighting && !inspect ? 1 - present : 0;
+		// it does not create a per-CD scene, light, or material. A hovered case
+		// holds still and faces you, so its sway fades out too.
+		const response =
+			reactiveLighting && !inspect ? (1 - present) * (1 - hoverAmount) : 0;
 		const phase = slot * 1.618 - scroll.offset * 0.9;
 		// The skylights in attic-2k are small in angular terms. A couple of
 		// degrees leaves them off the lid entirely; this 8° resting range and
@@ -296,9 +316,11 @@
 		const lightYaw = Math.sin(phase) * sway * response;
 		const lightPitch = Math.cos(phase * 1.23) * sway * 0.42 * response;
 
-		inner.rotation.y = lerp(caseYaw, presentYaw, present) + spin + lightYaw;
+		// hover turns the case partway to face-on; opening turns it the rest
+		const faceMix = Math.max(present, hoverAmount * HOVER_FACE);
+		inner.rotation.y = lerp(caseYaw, presentYaw, faceMix) + spin + lightYaw;
 		inner.rotation.x =
-			lerp(casePitch, presentPitch, present) + spinPitch + lightPitch;
+			lerp(casePitch, presentPitch, faceMix) + spinPitch + lightPitch;
 		inner.rotation.z = lerp(caseRoll, presentRoll, present);
 		onrotation?.(inner.rotation.x, inner.rotation.y, inner.rotation.z);
 	});
@@ -309,11 +331,13 @@
 
 	function enter() {
 		scroll.hovering = true;
+		hovered = true;
 		if (album) onhover(album, slot);
 	}
 
 	function leave() {
 		scroll.hovering = false;
+		hovered = false;
 		onhover(null);
 	}
 
@@ -321,12 +345,10 @@
 		// a fling (or a hold-and-spin) that ends on a case is not a tap
 		if (scroll.dragDistance > 8) return;
 		if (!album) return;
-		// tap opens the lid; the link opens only when the lid is already
-		// up and the user confirms by tapping the open case. Tapping an open
-		// case with no link closes it, so a focused case is never a dead end.
+		// Tapping an already-open case always closes it. External album links live
+		// in the focused action orb, so the case itself has one predictable job.
 		if (slot === openedSlot) {
-			if (album.link) window.open(album.link, "_blank", "noopener,noreferrer");
-			else onopen(null);
+			onopen(null);
 			return;
 		}
 		onopen(slot);
@@ -416,6 +438,7 @@
 		     eats the left edge). Hidden by the booklet when closed; revealed
 		     when the lid hinges open and carries the cover away. -->
 		<T.Mesh
+			bind:ref={discMesh}
 			geometry={discGeometry}
 			material={discMaterial}
 			position.x={discX}

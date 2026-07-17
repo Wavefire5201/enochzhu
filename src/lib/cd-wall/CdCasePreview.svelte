@@ -21,6 +21,10 @@
 		presentY: number;
 		caseModel: JewelCaseModel;
 		discStyle: DiscStyle;
+		discSpin: number;
+		discIridescence: number;
+		discThicknessLo: number;
+		discThicknessHi: number;
 		onopenchange?: (open: boolean) => void;
 		hdriPath: string | null;
 		hdriRotation: number;
@@ -68,6 +72,10 @@
 		presentY,
 		caseModel,
 		discStyle,
+		discSpin,
+		discIridescence,
+		discThicknessLo,
+		discThicknessHi,
 		onopenchange,
 		hdriPath,
 		hdriRotation,
@@ -149,6 +157,10 @@
 				{presentY}
 				{caseModel}
 				{discStyle}
+				{discSpin}
+				{discIridescence}
+				{discThicknessLo}
+				{discThicknessHi}
 				{hdriPath}
 				{hdriRotation}
 				{backgroundIntensity}

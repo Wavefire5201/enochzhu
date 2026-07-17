@@ -13,12 +13,14 @@
 		albums: CdAlbum[];
 		openedSlot: number | null;
 		onopen: (slot: number | null) => void;
+		onready: () => void;
 		onfail: () => void;
 	}>;
 
 	let host = $state<HTMLElement>();
 	let Wall3D = $state<WallModule | null>(null);
 	let failed = $state(false);
+	let wallReady = $state(false);
 	// true the moment we know WebGL will run — used to hide the 2D fallback strip
 	// during the load window so it never flashes in before the canvas mounts. It
 	// stays false for no-JS / no-WebGL / reduced-motion, where the strip IS the
@@ -50,17 +52,26 @@
 	// Warm the HTTP cache for the wall's heaviest assets so its own loaders hit
 	// cache the instant it mounts — this is what makes "scroll down and it's
 	// already there" true instead of watching textures pop in.
-	function prefetchAssets() {
-		for (const href of [
-			DEFAULT_WALL_HDRI_PATH,
-			"/models/jewel-case-charcoal.glb",
-			"/models/cd-case.glb",
-		]) {
-			const link = document.createElement("link");
-			link.rel = "prefetch";
-			link.href = href;
-			document.head.appendChild(link);
-		}
+	function prefetchAssets(): Promise<void> {
+		return Promise.allSettled(
+			[
+				DEFAULT_WALL_HDRI_PATH,
+				"/models/jewel-case-charcoal.glb",
+				"/models/jewel-case-detailed.glb",
+				"/models/cd-case.glb",
+			].map((href) => {
+				// Fetch during the post-hero warm-up rather than relying on `prefetch`:
+				// some browsers give a prefetch almost no bandwidth. This leaves the
+				// response in the HTTP cache for Three's loaders when the canvas mounts.
+				return fetch(href, { cache: "force-cache" }).then((response) => {
+					if (!response.ok) throw new Error(`failed to warm ${href}`);
+					// `fetch` resolves at response headers. Consume the body before the
+					// renderer mounts so the browser can reuse a complete cache entry,
+					// rather than competing with a second request for the same EXR/GLB.
+					return response.arrayBuffer();
+				});
+			}),
+		).then(() => {});
 	}
 
 	onMount(() => {
@@ -71,45 +82,42 @@
 		const probe = document.createElement("canvas");
 		if (!probe.getContext("webgl2")) return;
 
-		// commit to the canvas: the fallback strip clips away now, so it never
-		// flashes in during the load window before the wall mounts
-		canvasIntended = true;
-
-		// Mount (create the GL context + render loop) only as the section nears,
-		// so an idle top-of-page visitor pays no continuous render cost. The
-		// generous margin means it is already running before it scrolls into view.
-		const io = new IntersectionObserver(
-			async (entries) => {
-				if (!entries.some((entry) => entry.isIntersecting)) return;
-				io.disconnect();
-				await preloadWall();
-				// chunk genuinely failed to load — bring the strip back
-				if (preloaded) Wall3D = preloaded;
-				else failed = true;
-			},
-			{ rootMargin: "1400px" },
-		);
-		if (host) io.observe(host);
-
-		// Preload the chunk and assets during idle regardless of scroll, so the
-		// download is done long before the mount — the user never waits on it.
-		const eager = () => {
-			prefetchAssets();
+		let io: IntersectionObserver | null = null;
+		let warmed = false;
+		let warmAssets: Promise<void> | null = null;
+		const warmWall = () => {
+			if (warmed) return;
+			// The hero owns startup bandwidth and GPU time. Only begin the CD wall
+			// after the visitor has deliberately left most of it; the large observer
+			// margin below still gives the HDRI several screens of runway before music.
+			if (window.scrollY < window.innerHeight * 0.75) return;
+			warmed = true;
+			window.removeEventListener("scroll", warmWall);
+			warmAssets = prefetchAssets();
 			void preloadWall();
+
+			io = new IntersectionObserver(
+				async (entries) => {
+					if (!entries.some((entry) => entry.isIntersecting)) return;
+					io?.disconnect();
+					// Commit only while still offscreen, so the fallback cannot flash in
+					// the visible section. The minimal loader appears if HDR decoding has
+					// not completed by the time the canvas reaches the viewport.
+					canvasIntended = true;
+					await Promise.all([warmAssets, preloadWall()]);
+					if (preloaded) Wall3D = preloaded;
+					else failed = true;
+				},
+				{ rootMargin: "2800px" },
+			);
+			if (host) io.observe(host);
 		};
-		const idle = window.requestIdleCallback;
-		let cancelEager: () => void;
-		if (idle) {
-			const handle = idle(eager, { timeout: 2500 });
-			cancelEager = () => window.cancelIdleCallback?.(handle);
-		} else {
-			const handle = setTimeout(eager, 1200);
-			cancelEager = () => clearTimeout(handle);
-		}
+		window.addEventListener("scroll", warmWall, { passive: true });
+		warmWall(); // handles restored scroll positions and direct #music links
 
 		return () => {
-			io.disconnect();
-			cancelEager();
+			io?.disconnect();
+			window.removeEventListener("scroll", warmWall);
 		};
 	});
 </script>
@@ -121,8 +129,19 @@
 				{albums}
 				{openedSlot}
 				onopen={(slot) => (openedSlot = slot)}
+				onready={() => (wallReady = true)}
 				onfail={() => (failed = true)}
 			/>
+		{/if}
+
+		{#if canvasIntended && !failed && !wallReady}
+			<div
+				class="pointer-events-none absolute inset-x-[13%] bottom-8 z-20"
+				role="status"
+				aria-label="loading the CD wall"
+			>
+				<div class="wall-loader-track"><span></span></div>
+			</div>
 		{/if}
 
 		<!-- the real content: an accessible, keyboard-navigable album list.
@@ -193,5 +212,28 @@
 		clip-path: none;
 		overflow-x: auto;
 		background: var(--color-bg);
+	}
+
+	.wall-loader-track {
+		height: 1px;
+		overflow: hidden;
+		background: color-mix(in srgb, var(--color-muted) 22%, transparent);
+	}
+
+	.wall-loader-track span {
+		display: block;
+		height: 100%;
+		width: 32%;
+		background: var(--color-bright);
+		animation: wall-loader 1.05s ease-in-out infinite alternate;
+	}
+
+	@keyframes wall-loader {
+		from {
+			transform: translateX(-105%);
+		}
+		to {
+			transform: translateX(315%);
+		}
 	}
 </style>

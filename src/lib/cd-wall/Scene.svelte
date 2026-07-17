@@ -54,6 +54,7 @@
 		openedSlot: number | null;
 		onopen: (slot: number | null) => void;
 		onhover: (album: CdAlbum | null, slot?: number) => void;
+		onready?: () => void;
 		onfail: () => void;
 		caseYaw?: number;
 		casePitch?: number;
@@ -115,6 +116,13 @@
 		stripSpecular?: number;
 		/** how mirror-like the disc is — high roughness smears a glint into a glow */
 		discRoughness?: number;
+		/** rad/sec the disc turns while a case is open — the reveal's turntable */
+		discSpin?: number;
+		/** thin-film rainbow on the bare mirror disc (0 = off, 1 = full) */
+		discIridescence?: number;
+		/** film-thickness range (nm) that sets the iridescent hue sweep */
+		discThicknessLo?: number;
+		discThicknessHi?: number;
 		glassRoughness?: number;
 		glassTransmission?: number;
 		glassClearcoat?: number;
@@ -140,6 +148,7 @@
 		openedSlot,
 		onopen,
 		onhover,
+		onready = () => {},
 		onfail,
 		caseYaw: configuredYaw = 1,
 		casePitch: configuredPitch = 0.45,
@@ -183,6 +192,10 @@
 		stripDistance = DEFAULT_CD_CASE_SCENE.stripDistance,
 		stripSpecular = DEFAULT_CD_CASE_SCENE.stripSpecular,
 		discRoughness = DEFAULT_CD_CASE_SCENE.discRoughness,
+		discSpin = 0.8,
+		discIridescence = 1,
+		discThicknessLo = 320,
+		discThicknessHi = 720,
 		glassRoughness = DEFAULT_CD_CASE_SCENE.glassRoughness,
 		glassTransmission = DEFAULT_CD_CASE_SCENE.glassTransmission,
 		glassClearcoat = DEFAULT_CD_CASE_SCENE.glassClearcoat,
@@ -210,9 +223,9 @@
 	// RectAreaLight renders black without its LTC lookup tables. One-time, global.
 	RectAreaLightUniformsLib.init();
 
-	// The glass and disc reflect scene.environment directly — the PMREM'd HDRI.
-	// With a true-HDR room its bright window becomes a sharp specular glint that
-	// bloom turns into a diamond-like flare, the same path the proto is tuned on.
+	// The glass reflects the PMREM'd HDRI. The exposed CD face is assigned the
+	// original 4K equirectangular map once it loads: this keeps its mirror detail
+	// above PMREM's filtered resolution while retaining physically softened glass.
 
 	// ——— bloom (proto + perspective wall) ———
 	// A bright emitter without bloom is just a white shape; bloom is what makes
@@ -524,7 +537,10 @@
 		const styled = discStyle !== "mirror";
 		discMaterial.roughness = styled ? 0.55 : discRoughness;
 		discMaterial.metalness = styled ? 1 : 0.9;
-		discMaterial.iridescence = styled ? 0.25 : 1;
+		// bare mirror disc gets the tunable rainbow; a printed label keeps only a
+		// faint sheen so the print still reads
+		discMaterial.iridescence = styled ? 0.25 : discIridescence;
+		discMaterial.iridescenceThicknessRange = [discThicknessLo, discThicknessHi];
 		discMaterial.color.set(styled ? "#ffffff" : "#e2e2de");
 		const charcoal = caseModel === "charcoal";
 		// Preserve each folder's tray MTL profile. Both variants deliberately use
@@ -797,6 +813,8 @@
 		hdriDisposable?.dispose();
 		hdriDisposable = null;
 		hdriSource = null;
+		discMaterial.envMap = null;
+		discMaterial.needsUpdate = true;
 		hdriBackgroundDisposable?.dispose();
 		hdriBackgroundDisposable = null;
 		hdriBackground = null;
@@ -856,11 +874,17 @@
 				}
 				hdriEnvironment = pmrem.fromEquirectangular(source);
 				scene.environment = hdriEnvironment.texture;
+				onready();
 				// the raw equirect is kept only so it can be shown as a backdrop;
 				// lighting always comes from the PMREM'd version
 				source.mapping = EquirectangularReflectionMapping;
 				hdriDisposable = source;
 				hdriSource = source;
+				// A disc is effectively a near-mirror. Sampling the original panorama
+				// here retains the source's 4K detail instead of magnifying PMREM's
+				// filtered reflection into visible blocks on a focused case.
+				discMaterial.envMap = source;
+				discMaterial.needsUpdate = true;
 				// A selected JPG is already the authored visible panorama. Reuse it
 				// instead of loading the same file a second time as its own sibling.
 				if (isLdrImage) hdriBackground = source;
@@ -868,9 +892,13 @@
 			undefined,
 			() => {
 				// Keep the built-in lightbox if the file is missing or unsupported.
+				onready();
 			},
 		);
-		if (!isLdrImage) {
+		// A JPG sibling is only useful for the visible proto backdrop. The live
+		// wall intentionally hides its HDRI, so probing for a nonexistent sibling
+		// there creates a needless 404 on every visit.
+		if (!isLdrImage && showBackground) {
 			new TextureLoader().load(
 				path.replace(/\.(exr|hdr)$/i, ".jpg"),
 				(texture) => {
@@ -1068,6 +1096,7 @@
 			{presentScale}
 			{presentX}
 			{presentY}
+			{discSpin}
 			caseWidth={CASE_W}
 			{caseDepth}
 			discX={hub.x}

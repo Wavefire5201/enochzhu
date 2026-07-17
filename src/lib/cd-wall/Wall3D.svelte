@@ -3,6 +3,7 @@
 	import { onMount } from "svelte";
 	import { WebGLRenderer } from "three";
 	import type { CdAlbum } from "./albums";
+	import CdActions from "./CdActions.svelte";
 	import { albumIndexAt } from "./layout";
 	import Scene from "./Scene.svelte";
 	import { WallScroll } from "./scroll";
@@ -11,10 +12,11 @@
 		albums: CdAlbum[];
 		openedSlot: number | null;
 		onopen: (slot: number | null) => void;
+		onready: () => void;
 		onfail: () => void;
 	}
 
-	const { albums, openedSlot, onopen, onfail }: Props = $props();
+	const { albums, openedSlot, onopen, onready, onfail }: Props = $props();
 
 	const scroll = new WallScroll();
 	let host = $state<HTMLElement>();
@@ -153,6 +155,7 @@
 				{scroll}
 				{openedSlot}
 				{onopen}
+				{onready}
 				onhover={(album, slot) =>
 					(hovered = album && slot !== undefined ? { album, slot } : null)}
 				{onfail}
@@ -182,11 +185,17 @@
 				{#if focused.artist}
 					<p class="font-mono text-sm text-fg">{focused.artist}</p>
 				{/if}
+				{#if focused.year}
+					<p class="font-mono text-xs text-muted">{focused.year}</p>
+				{/if}
 				{#if focused.note}
 					<p class="text-sm leading-relaxed text-muted">
 						{focused.note}
 					</p>
 				{/if}
+				<div class="pointer-events-auto mt-2">
+					<CdActions album={focused} />
+				</div>
 			</div>
 		</div>
 	{/if}
