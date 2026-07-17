@@ -1,5 +1,6 @@
 import type { Entry } from "$lib/content";
 import type { Music } from "$lib/content/schema";
+import type { DiscStyle } from "./disc-art";
 
 /**
  * What the wall renders. The renderer consumes this array and does not care
@@ -19,6 +20,8 @@ export interface CdAlbum {
 	color: string;
 	link?: string;
 	note?: string;
+	/** optional manual override of the auto-assigned disc face (see pickDiscStyle) */
+	discStyle?: DiscStyle;
 }
 
 const FALLBACK_COLOR = "#1d211f";
@@ -38,5 +41,6 @@ export function toCdAlbums(entries: Entry<Music>[]): CdAlbum[] {
 			color: e.meta.color ?? FALLBACK_COLOR,
 			link: e.meta.link,
 			note: e.meta.note,
+			discStyle: e.meta.discStyle as DiscStyle | undefined,
 		}));
 }

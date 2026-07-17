@@ -94,6 +94,9 @@ export const musicSchema = z.object({
 	color: z.string().optional(),
 	/** one-line reason this made the cut — Enoch's words, never invented */
 	note: z.string().optional(),
+	/** optional manual override of the CD wall's auto-assigned disc face;
+	 * matches a DiscStyle value in src/lib/cd-wall/disc-art.ts */
+	discStyle: z.string().optional(),
 	order: z.number().default(99),
 });
 

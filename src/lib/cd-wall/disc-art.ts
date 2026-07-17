@@ -10,16 +10,27 @@ import type { CdAlbum } from "./albums";
  */
 export type DiscStyle =
 	| "mirror"
+	| "catalog"
 	| "label"
 	| "art"
 	| "color"
 	| "clean"
 	| "palette"
 	| "spiral"
-	| "duotone";
+	| "duotone"
+	| "pressed"
+	| "halftone"
+	| "geo"
+	| "marquee"
+	| "index";
 
 export const DISC_STYLES: { value: DiscStyle; label: string; hint: string }[] =
 	[
+		{
+			value: "catalog",
+			label: "catalog label",
+			hint: "The overlay replacement: high-contrast title, artist, and year set horizontally on a palette-led A-side label.",
+		},
 		{
 			value: "mirror",
 			label: "iridescent mirror",
@@ -44,6 +55,31 @@ export const DISC_STYLES: { value: DiscStyle; label: string; hint: string }[] =
 			value: "duotone",
 			label: "duotone print",
 			hint: "Cover art screen-printed in two palette tones — a bold graphic label.",
+		},
+		{
+			value: "pressed",
+			label: "pressed disc",
+			hint: "Realistic manufactured CD: silver face with a faint rainbow data groove, catalog microtype curved at the hub, printed title, and 'compact disc · digital audio' set near the rim with registration ticks.",
+		},
+		{
+			value: "halftone",
+			label: "halftone print",
+			hint: "Cover art rendered as a one-tone dot screen over the album colour — a screen-printed graphic with the title set clean near the hub.",
+		},
+		{
+			value: "geo",
+			label: "generative geometry",
+			hint: "Textless palette-seeded mandala — concentric segmented rings and rays derived from the album, unique to each record. Leans on the caption for words.",
+		},
+		{
+			value: "marquee",
+			label: "type marquee",
+			hint: "Title repeated as a continuous ticker curved around the outer ring; artist and year set small at the hub.",
+		},
+		{
+			value: "index",
+			label: "index card",
+			hint: "Monospace card-catalog grid: a big stacked lowercase title over a hairline baseline grid, year set as a coordinate.",
 		},
 		{
 			value: "label",
@@ -143,16 +179,31 @@ function readable(hex: string) {
 	return 0.2126 * r + 0.7152 * g + 0.0722 * b > 140 ? "#1a1a1a" : "#f2f2f2";
 }
 
-/** the modeled disc samples its face mirrored, so pre-flip text/art here */
-function mirrorX(ctx: CanvasRenderingContext2D) {
-	ctx.translate(SIZE, 0);
-	ctx.scale(-1, 1);
+function translucent(hex: string, alpha: number) {
+	const [r, g, b] = hexRgb(hex);
+	return `rgb(${r} ${g} ${b} / ${alpha})`;
+}
+
+/** Draw the largest readable text that fits the requested label width. */
+function fittedText(
+	ctx: CanvasRenderingContext2D,
+	text: string,
+	maxWidth: number,
+	startSize: number,
+	minSize: number,
+) {
+	let size = startSize;
+	while (size > minSize) {
+		ctx.font = `600 ${size}px 'Commit Mono', ui-monospace, monospace`;
+		if (ctx.measureText(text).width <= maxWidth) break;
+		size -= 2;
+	}
+	ctx.font = `600 ${size}px 'Commit Mono', ui-monospace, monospace`;
 }
 
 function labelBase(album: CdAlbum): HTMLCanvasElement {
 	const el = canvas();
 	const ctx = el.getContext("2d")!;
-	mirrorX(ctx);
 	clipDisc(ctx);
 	// printed label fills the disc; a paler concentric sheen keeps it from
 	// reading as one flat chip
@@ -164,26 +215,78 @@ function labelBase(album: CdAlbum): HTMLCanvasElement {
 	// silver rings sit over the print so the shine has a colour to reflect
 	ring(ctx, R_HUB, R_CLAMP, "#c9ccce");
 	ring(ctx, R_EDGE, R_OUT, "#c9ccce");
-	// title + artist, set just outside the clamp ring
+	// Information reads horizontally at the disc's resting angle. Printed proto
+	// styles use a stable radial UV disc, so no pre-flipping is needed.
 	const ink = readable(album.color);
 	ctx.fillStyle = ink;
 	ctx.textAlign = "center";
 	ctx.textBaseline = "middle";
-	ctx.font = `600 46px 'Commit Mono', ui-monospace, monospace`;
-	ctx.fillText(album.title.toLowerCase(), C, C - R_CLAMP - 46, R_OUT * 1.3);
+	fittedText(ctx, album.title.toLowerCase(), R_OUT * 1.5, 72, 34);
+	ctx.fillText(album.title.toLowerCase(), C, C - 292, R_OUT * 1.5);
 	if (album.artist) {
 		ctx.globalAlpha = 0.7;
-		ctx.font = `400 34px 'Commit Mono', ui-monospace, monospace`;
-		ctx.fillText(album.artist.toLowerCase(), C, C + R_CLAMP + 46, R_OUT * 1.3);
+		ctx.font = `400 38px 'Commit Mono', ui-monospace, monospace`;
+		ctx.fillText(album.artist.toLowerCase(), C, C - 224, R_OUT * 1.45);
 		ctx.globalAlpha = 1;
 	}
+	if (album.year) {
+		ctx.globalAlpha = 0.58;
+		ctx.font = `500 30px 'Commit Mono', ui-monospace, monospace`;
+		ctx.fillText(album.year, C, C + 236);
+		ctx.globalAlpha = 1;
+	}
+	return el;
+}
+
+/**
+ * The information-forward option: a real A-side label with cover-derived
+ * colours confined to graphic detail. This deliberately avoids curved title
+ * type — it stays legible when the viewer catches the disc at a glance.
+ */
+function catalogBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
+	const el = canvas();
+	const ctx = el.getContext("2d")!;
+	clipDisc(ctx);
+	const accent = mostVibrant(palette) ?? album.color;
+	// Light covers get a dark ink label; dark covers can use warm paper. This is
+	// deliberately the inverse of the text-contrast decision above.
+	const dark = readable(album.color) === "#1a1a1a" ? "#121413" : "#f1f2ee";
+	ctx.fillStyle = dark;
+	ctx.fillRect(0, 0, SIZE, SIZE);
+	// Palette-recovered colour appears in a pair of precise rings, rather than
+	// making the label itself low-contrast or decorative.
+	ring(ctx, R_CLAMP + 9, R_CLAMP + 22, accent);
+	ring(ctx, R_EDGE - 17, R_EDGE - 8, accent);
+	strokeRing(ctx, R_EDGE - 42, translucent(accent, 0.4), 2);
+	ring(ctx, R_HUB, R_CLAMP, "#c9ccce");
+	ring(ctx, R_EDGE, R_OUT, "#c9ccce");
+
+	ctx.fillStyle = readable(dark);
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+	fittedText(ctx, album.title.toUpperCase(), R_OUT * 1.5, 86, 38);
+	ctx.fillText(album.title.toUpperCase(), C, C - 300, R_OUT * 1.5);
+	ctx.globalAlpha = 0.72;
+	ctx.font = `500 42px 'Commit Mono', ui-monospace, monospace`;
+	ctx.fillText(
+		(album.artist ?? "unknown artist").toUpperCase(),
+		C,
+		C - 230,
+		R_OUT * 1.45,
+	);
+	ctx.globalAlpha = 0.55;
+	ctx.font = `500 34px 'Commit Mono', ui-monospace, monospace`;
+	ctx.fillText(album.year ?? "—", C, C + 230);
+	ctx.globalAlpha = 0.5;
+	ctx.font = `500 20px 'Commit Mono', ui-monospace, monospace`;
+	ctx.fillText("SIDE A  ·  COMPACT DISC", C, C + 292, R_OUT * 1.35);
+	ctx.globalAlpha = 1;
 	return el;
 }
 
 function colorBase(album: CdAlbum): HTMLCanvasElement {
 	const el = canvas();
 	const ctx = el.getContext("2d")!;
-	mirrorX(ctx);
 	clipDisc(ctx);
 	ctx.fillStyle = album.color;
 	ctx.fillRect(0, 0, SIZE, SIZE);
@@ -208,7 +311,6 @@ function artBase(album: CdAlbum): Promise<HTMLCanvasElement> {
 		img.onload = () => {
 			const el = canvas();
 			const ctx = el.getContext("2d")!;
-			mirrorX(ctx);
 			clipDisc(ctx);
 			// cover-fill the square art into the disc
 			const s = Math.max(SIZE / img.width, SIZE / img.height);
@@ -368,7 +470,6 @@ export function extractPalette(src: string, count = 6): Promise<string[]> {
 function cleanBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
 	const el = canvas();
 	const ctx = el.getContext("2d")!;
-	mirrorX(ctx);
 	clipDisc(ctx);
 	ctx.fillStyle = album.color;
 	ctx.fillRect(0, 0, SIZE, SIZE);
@@ -379,11 +480,20 @@ function cleanBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
 	ctx.fillStyle = ink;
 	ctx.textAlign = "center";
 	ctx.textBaseline = "middle";
-	ctx.font = `500 34px 'Commit Mono', ui-monospace, monospace`;
+	fittedText(ctx, album.title.toLowerCase(), R_OUT * 1.18, 38, 24);
 	// letterSpacing is honoured by modern canvas; harmless where it is not
 	ctx.letterSpacing = "6px";
 	ctx.fillText(album.title.toLowerCase(), C, C - R_CLAMP - 44, R_OUT * 1.2);
 	ctx.letterSpacing = "0px";
+	ctx.globalAlpha = 0.7;
+	ctx.font = `400 24px 'Commit Mono', ui-monospace, monospace`;
+	ctx.fillText(
+		[album.artist, album.year].filter(Boolean).join(" · ").toLowerCase(),
+		C,
+		C + R_CLAMP + 38,
+		R_OUT * 1.2,
+	);
+	ctx.globalAlpha = 1;
 	return el;
 }
 
@@ -391,7 +501,6 @@ function cleanBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
 function paletteBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
 	const el = canvas();
 	const ctx = el.getContext("2d")!;
-	mirrorX(ctx);
 	clipDisc(ctx);
 	const cols = palette.length ? palette : [album.color];
 	const bands = 6;
@@ -409,7 +518,6 @@ function paletteBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
 function spiralBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
 	const el = canvas();
 	const ctx = el.getContext("2d")!;
-	mirrorX(ctx);
 	clipDisc(ctx);
 	ctx.fillStyle = album.color;
 	ctx.fillRect(0, 0, SIZE, SIZE);
@@ -470,7 +578,6 @@ function duotoneBase(
 
 			const el = canvas();
 			const ctx = el.getContext("2d")!;
-			mirrorX(ctx);
 			clipDisc(ctx);
 			ctx.drawImage(buf, 0, 0);
 			ring(ctx, R_HUB, R_CLAMP, "#c9ccce");
@@ -480,6 +587,340 @@ function duotoneBase(
 		img.onerror = reject;
 		img.src = album.cover;
 	});
+}
+
+/** small stable string hash (FNV-1a) — deterministic per album id */
+function hashString(text: string): number {
+	let h = 2166136261;
+	for (let i = 0; i < text.length; i++) {
+		h ^= text.charCodeAt(i);
+		h = Math.imul(h, 16777619);
+	}
+	return h >>> 0;
+}
+
+/** seeded PRNG (mulberry32) so generative faces are stable per album */
+function mulberry32(seed: number): () => number {
+	let a = seed >>> 0;
+	return () => {
+		a |= 0;
+		a = (a + 0x6d2b79f5) | 0;
+		let t = Math.imul(a ^ (a >>> 15), 1 | a);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+
+/** 0…1 saturation of a hex colour — drives the auto-assignment palette bias */
+function saturationOf(hex: string): number {
+	const [r, g, b] = hexRgb(hex).map((v) => v / 255);
+	const max = Math.max(r, g, b);
+	const min = Math.min(r, g, b);
+	return max === 0 ? 0 : (max - min) / max;
+}
+
+/**
+ * Realistic pressed CD: a brushed-silver face with a faint rainbow data groove
+ * in the outer half, a printed title on the inner silver, catalog microtype at
+ * the clamp, and rim text with registration ticks. The rainbow is drawn (not a
+ * material effect) so the style renders identically on the wall and in proto.
+ */
+function pressedBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
+	const el = canvas();
+	const ctx = el.getContext("2d")!;
+	clipDisc(ctx);
+	const face = ctx.createRadialGradient(C, C, R_CLAMP, C, C, R_OUT);
+	face.addColorStop(0, "#d9dbdf");
+	face.addColorStop(1, "#c1c4c9");
+	ctx.fillStyle = face;
+	ctx.fillRect(0, 0, SIZE, SIZE);
+	// data groove: thin hue-cycling rings across the outer half only
+	const grooveIn = C * 0.53;
+	const grooveOut = R_EDGE - 14;
+	for (let r = grooveIn; r < grooveOut; r += 2) {
+		const t = (r - grooveIn) / (grooveOut - grooveIn);
+		ctx.beginPath();
+		ctx.arc(C, C, r, 0, Math.PI * 2);
+		ctx.strokeStyle = `hsl(${(t * 560) % 360} 72% 58% / 0.07)`;
+		ctx.lineWidth = 2;
+		ctx.stroke();
+	}
+	const accent = mostVibrant(palette) ?? album.color;
+	strokeRing(ctx, grooveIn - 6, accent, 3);
+	// brighter clamp + edge rings
+	ring(ctx, R_HUB, R_CLAMP, "#e6e8ea");
+	ring(ctx, R_EDGE - 8, R_OUT, "#e6e8ea");
+	strokeRing(ctx, R_CLAMP, "#9aa0a6", 2);
+	strokeRing(ctx, R_EDGE - 8, "#9aa0a6", 2);
+	// catalog microtype pressed around the clamp
+	curvedText(
+		ctx,
+		`CAT ${(hashString(album.id) % 9000) + 1000} · ${album.year ?? "—"}`,
+		R_CLAMP + 20,
+		"#6b7075",
+		-Math.PI / 2,
+		20,
+	);
+	// printed title + artist on the inner silver, readable at rest
+	ctx.fillStyle = "#1a1c1e";
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+	fittedText(ctx, album.title.toUpperCase(), C * 0.9, 52, 28);
+	ctx.fillText(album.title.toUpperCase(), C, C - 118, C * 0.9);
+	if (album.artist) {
+		ctx.globalAlpha = 0.7;
+		ctx.font = `500 28px 'Commit Mono', ui-monospace, monospace`;
+		ctx.fillText(album.artist.toUpperCase(), C, C - 80, C * 0.82);
+		ctx.globalAlpha = 1;
+	}
+	// rim text + registration ticks
+	curvedText(
+		ctx,
+		"COMPACT DISC  ·  DIGITAL AUDIO  ·  SIDE A",
+		R_EDGE - 30,
+		"#565b60",
+		Math.PI / 2,
+		19,
+		true,
+	);
+	for (const a of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
+		ctx.save();
+		ctx.translate(C, C);
+		ctx.rotate(a);
+		ctx.fillStyle = "#6b7075";
+		ctx.fillRect(-2, -(R_EDGE - 20), 4, 13);
+		ctx.restore();
+	}
+	return el;
+}
+
+/** cover art as a one-tone halftone dot screen — a screen-printed graphic */
+function halftoneBase(
+	album: CdAlbum,
+	palette: string[],
+): Promise<HTMLCanvasElement> {
+	return new Promise((resolve, reject) => {
+		const img = new Image();
+		img.crossOrigin = "anonymous";
+		img.onload = () => {
+			const n = 66;
+			const buf = document.createElement("canvas");
+			buf.width = buf.height = n;
+			const bctx = buf.getContext("2d", { willReadFrequently: true })!;
+			const s = Math.max(n / img.width, n / img.height);
+			const w = img.width * s,
+				h = img.height * s;
+			bctx.drawImage(img, n / 2 - w / 2, n / 2 - h / 2, w, h);
+			const data = bctx.getImageData(0, 0, n, n).data;
+
+			const el = canvas();
+			const ctx = el.getContext("2d")!;
+			clipDisc(ctx);
+			ctx.fillStyle = album.color;
+			ctx.fillRect(0, 0, SIZE, SIZE);
+			const ink =
+				mostVibrant(palette) ??
+				(readable(album.color) === "#1a1a1a" ? "#141414" : "#f0f0f0");
+			ctx.fillStyle = ink;
+			const cell = SIZE / n;
+			for (let y = 0; y < n; y++) {
+				for (let x = 0; x < n; x++) {
+					const i = (y * n + x) * 4;
+					const lum =
+						(0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) /
+						255;
+					const rad = (cell / 2) * Math.sqrt(1 - lum) * 1.28;
+					if (rad < 0.4) continue;
+					ctx.beginPath();
+					ctx.arc(x * cell + cell / 2, y * cell + cell / 2, rad, 0, Math.PI * 2);
+					ctx.fill();
+				}
+			}
+			ring(ctx, R_HUB, R_CLAMP, "#c9ccce");
+			ring(ctx, R_EDGE, R_OUT, "#c9ccce");
+			// title near the hub, haloed in the album colour so it reads over the dots
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			fittedText(ctx, album.title.toLowerCase(), R_OUT * 1.1, 40, 24);
+			ctx.lineJoin = "round";
+			ctx.strokeStyle = album.color;
+			ctx.lineWidth = 7;
+			ctx.strokeText(album.title.toLowerCase(), C, C - R_CLAMP - 46, R_OUT * 1.1);
+			ctx.fillStyle = readable(album.color);
+			ctx.fillText(album.title.toLowerCase(), C, C - R_CLAMP - 46, R_OUT * 1.1);
+			const sub = [album.artist, album.year]
+				.filter(Boolean)
+				.join(" · ")
+				.toLowerCase();
+			if (sub) {
+				ctx.font = `400 24px 'Commit Mono', ui-monospace, monospace`;
+				ctx.lineWidth = 6;
+				ctx.strokeText(sub, C, C + R_CLAMP + 42, R_OUT);
+				ctx.globalAlpha = 0.85;
+				ctx.fillText(sub, C, C + R_CLAMP + 42, R_OUT);
+				ctx.globalAlpha = 1;
+			}
+			resolve(el);
+		};
+		img.onerror = reject;
+		img.src = album.cover;
+	});
+}
+
+/** textless generative mandala: palette-seeded segmented rings + rays */
+function geoBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
+	const el = canvas();
+	const ctx = el.getContext("2d")!;
+	clipDisc(ctx);
+	const cols = palette.length ? palette : [album.color];
+	const rnd = mulberry32(hashString(album.id));
+	const [r, g, b] = hexRgb(album.color);
+	ctx.fillStyle = rgbHex(r * 0.35, g * 0.35, b * 0.35);
+	ctx.fillRect(0, 0, SIZE, SIZE);
+	const rings = 4 + Math.floor(rnd() * 3);
+	for (let k = 0; k < rings; k++) {
+		const inner = R_CLAMP + ((R_EDGE - R_CLAMP) * k) / rings;
+		const outer = R_CLAMP + ((R_EDGE - R_CLAMP) * (k + 0.74)) / rings;
+		const seg = 4 + Math.floor(rnd() * 9);
+		const rot = rnd() * Math.PI * 2;
+		const gap = 0.14 + rnd() * 0.42;
+		for (let s = 0; s < seg; s++) {
+			const a0 = rot + (s / seg) * Math.PI * 2;
+			const a1 = a0 + (Math.PI * 2 * (1 - gap)) / seg;
+			ctx.beginPath();
+			ctx.arc(C, C, outer, a0, a1);
+			ctx.arc(C, C, inner, a1, a0, true);
+			ctx.closePath();
+			ctx.fillStyle = cols[(k + s) % cols.length];
+			ctx.globalAlpha = 0.86;
+			ctx.fill();
+		}
+	}
+	ctx.globalAlpha = 0.5;
+	ctx.strokeStyle = cols[0];
+	ctx.lineWidth = 2;
+	const rays = 8 + Math.floor(rnd() * 10);
+	for (let i = 0; i < rays; i++) {
+		const a = (i / rays) * Math.PI * 2 + rnd() * 0.1;
+		ctx.beginPath();
+		ctx.moveTo(C + Math.cos(a) * R_CLAMP, C + Math.sin(a) * R_CLAMP);
+		ctx.lineTo(C + Math.cos(a) * (R_EDGE - 6), C + Math.sin(a) * (R_EDGE - 6));
+		ctx.stroke();
+	}
+	ctx.globalAlpha = 1;
+	ring(ctx, R_HUB, R_CLAMP, "#c9ccce");
+	ring(ctx, R_EDGE, R_OUT, "#c9ccce");
+	return el;
+}
+
+/** editorial ticker: the title repeated as a continuous curved band */
+function marqueeBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
+	const el = canvas();
+	const ctx = el.getContext("2d")!;
+	clipDisc(ctx);
+	ctx.fillStyle = album.color;
+	ctx.fillRect(0, 0, SIZE, SIZE);
+	ring(ctx, R_HUB, R_CLAMP, "#c9ccce");
+	ring(ctx, R_EDGE, R_OUT, "#c9ccce");
+	const ink = readable(album.color);
+	const accent = mostVibrant(palette);
+	if (accent) strokeRing(ctx, R_EDGE - 16, accent, 3);
+	// build a repeated ticker long enough to close the ring at this radius
+	const radius = R_EDGE - 48;
+	const fontSize = 40;
+	const per = (fontSize * 0.9) / radius;
+	const glyphs = Math.floor((Math.PI * 2) / per);
+	const unit = ` ${album.title.toUpperCase()}   ·  `;
+	let ticker = "";
+	while (ticker.length < glyphs) ticker += unit;
+	curvedText(ctx, ticker.slice(0, glyphs), radius, ink, -Math.PI / 2, fontSize);
+	ctx.fillStyle = ink;
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+	if (album.artist) {
+		ctx.globalAlpha = 0.9;
+		ctx.font = `600 30px 'Commit Mono', ui-monospace, monospace`;
+		ctx.fillText(album.artist.toUpperCase(), C, C - 108, R_CLAMP * 1.4);
+	}
+	if (album.year) {
+		ctx.globalAlpha = 0.65;
+		ctx.font = `500 26px 'Commit Mono', ui-monospace, monospace`;
+		ctx.fillText(album.year, C, C + 108, R_CLAMP * 1.4);
+	}
+	ctx.globalAlpha = 1;
+	return el;
+}
+
+/** monospace card-catalog grid: stacked lowercase title over a baseline grid */
+function indexBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
+	const el = canvas();
+	const ctx = el.getContext("2d")!;
+	clipDisc(ctx);
+	const paper = readable(album.color) === "#1a1a1a" ? "#15110b" : "#f2efe7";
+	ctx.fillStyle = paper;
+	ctx.fillRect(0, 0, SIZE, SIZE);
+	const ink = readable(paper);
+	const accent = mostVibrant(palette) ?? album.color;
+	// hairline baseline grid
+	ctx.strokeStyle = translucent(ink, 0.14);
+	ctx.lineWidth = 1;
+	for (let y = C - 170; y <= C + 190; y += 34) {
+		ctx.beginPath();
+		ctx.moveTo(C - 250, y);
+		ctx.lineTo(C + 250, y);
+		ctx.stroke();
+	}
+	// margin rule, like the red line on an index card
+	ctx.strokeStyle = accent;
+	ctx.lineWidth = 2;
+	ctx.beginPath();
+	ctx.moveTo(C - 150, C - 200);
+	ctx.lineTo(C - 150, C + 210);
+	ctx.stroke();
+	// stacked lowercase title, left-aligned to the margin
+	ctx.fillStyle = ink;
+	ctx.textAlign = "left";
+	ctx.textBaseline = "alphabetic";
+	const words = album.title.toLowerCase().split(/\s+/).filter(Boolean);
+	const lineH = 68;
+	let baseY = C - 150 + ((3 - Math.min(words.length, 3)) * lineH) / 2;
+	for (const word of words.slice(0, 3)) {
+		fittedText(ctx, word, 348, 60, 30);
+		ctx.fillText(word, C - 130, baseY, 348);
+		baseY += lineH;
+	}
+	// year as a coordinate + artist
+	ctx.font = `500 26px 'Commit Mono', ui-monospace, monospace`;
+	ctx.globalAlpha = 0.75;
+	if (album.year) ctx.fillText(`№ ${album.year}`, C - 130, C + 158, 348);
+	if (album.artist) {
+		ctx.globalAlpha = 0.6;
+		ctx.font = `400 24px 'Commit Mono', ui-monospace, monospace`;
+		ctx.fillText(album.artist.toLowerCase(), C - 130, C + 194, 348);
+	}
+	ctx.globalAlpha = 1;
+	ring(ctx, R_HUB, R_CLAMP, "#c9ccce");
+	ring(ctx, R_EDGE, R_OUT, "#c9ccce");
+	return el;
+}
+
+/**
+ * The curated auto-assignment pools. Vibrant covers lean graphic/photographic;
+ * muted covers lean typographic/realistic. A stable hash of the album id picks
+ * within the biased pool, so every album gets a distinct-but-fixed face.
+ */
+const VIBRANT_POOL: DiscStyle[] = ["halftone", "duotone", "marquee", "geo"];
+const MUTED_POOL: DiscStyle[] = ["pressed", "index", "clean", "catalog"];
+
+/**
+ * Hybrid per-album disc face: an explicit `album.discStyle` wins; otherwise a
+ * deterministic hash of the id indexes a palette-biased pool. Pure and
+ * DOM-free, so it is safe to call anywhere and is unit-testable.
+ */
+export function pickDiscStyle(album: CdAlbum): DiscStyle {
+	if (album.discStyle) return album.discStyle;
+	const pool = saturationOf(album.color) >= 0.32 ? VIBRANT_POOL : MUTED_POOL;
+	return pool[hashString(album.id) % pool.length];
 }
 
 const EMPTY: DiscMaps = {
@@ -495,14 +936,14 @@ export async function createDiscMaps(
 	album: CdAlbum,
 ): Promise<DiscMaps> {
 	if (style === "mirror") return EMPTY;
-	const needsPalette =
-		style === "clean" ||
-		style === "palette" ||
-		style === "spiral" ||
-		style === "duotone";
-	const palette = needsPalette ? await extractPalette(album.cover) : [];
+	// mirror already returned above; every remaining style derives an accent
+	// palette from the cover (cheap and cached by the browser image decode).
+	const palette = await extractPalette(album.cover);
 	let base: HTMLCanvasElement;
 	switch (style) {
+		case "catalog":
+			base = catalogBase(album, palette);
+			break;
 		case "art":
 			base = await artBase(album);
 			break;
@@ -520,6 +961,21 @@ export async function createDiscMaps(
 			break;
 		case "duotone":
 			base = await duotoneBase(album, palette);
+			break;
+		case "pressed":
+			base = pressedBase(album, palette);
+			break;
+		case "halftone":
+			base = await halftoneBase(album, palette);
+			break;
+		case "geo":
+			base = geoBase(album, palette);
+			break;
+		case "marquee":
+			base = marqueeBase(album, palette);
+			break;
+		case "index":
+			base = indexBase(album, palette);
 			break;
 		default:
 			base = labelBase(album);
