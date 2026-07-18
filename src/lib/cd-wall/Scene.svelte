@@ -67,6 +67,9 @@
 		/** where an opened case settles — negative x parks it left, clearing room */
 		presentX?: number;
 		presentY?: number;
+		/** open-case pointer parallax, supplied by the single-case proto */
+		openLookX?: number;
+		openLookY?: number;
 		preview?: boolean;
 		/** use the proto's perspective viewing geometry while retaining the wall pool */
 		perspectiveWall?: boolean;
@@ -162,6 +165,8 @@
 		presentScale = 0.35,
 		presentX = 0,
 		presentY = 0,
+		openLookX = 0,
+		openLookY = 0,
 		preview = false,
 		perspectiveWall = false,
 		caseModel = DEFAULT_CD_CASE_SCENE.caseModel,
@@ -491,7 +496,15 @@
 	const cardGeometry = $derived(selectedModel?.card ?? null);
 	const lidGeometry = $derived(selectedModel?.lid ?? fallbackLid);
 	const artGeometry = $derived(selectedModel ? modeledArt : fallbackArt);
-	const discGeometry = $derived(modeledDisc ?? fallbackDisc);
+	// The extracted legacy disc mesh is excellent for the bare mirror, but its
+	// UV island only covers the hub area. Printed label systems need a full,
+	// predictable radial UV layout, so the proto uses the procedural disc for
+	// every non-mirror style.
+	const discGeometry = $derived(
+		preview && discStyle !== "mirror"
+			? fallbackDisc
+			: (modeledDisc ?? fallbackDisc),
+	);
 	const caseDepth = $derived(selectedModel?.caseDepth ?? CASE_D);
 	// Modeled parts already sit at their assembly positions (lidZ 0); only the
 	// flat inserts need placing: the booklet just inside the lid's front
@@ -542,6 +555,12 @@
 		discMaterial.iridescence = styled ? 0.25 : discIridescence;
 		discMaterial.iridescenceThicknessRange = [discThicknessLo, discThicknessHi];
 		discMaterial.color.set(styled ? "#ffffff" : "#e2e2de");
+		discMaterial.emissive.set(styled ? "#4a4a4a" : "#000000");
+		discMaterial.emissiveIntensity = styled ? 0.32 : 0;
+		// The raw 4K equirectangular source is intentionally used for the bare
+		// mirror's sharp diamonds. A printed label instead uses the scene PMREM,
+		// otherwise that raw room overwhelms its ink and turns the label silver.
+		discMaterial.envMap = styled ? null : hdriSource;
 		const charcoal = caseModel === "charcoal";
 		// Preserve each folder's tray MTL profile. Both variants deliberately use
 		// the same clean glass below—there is no fingerprint roughness texture.
@@ -554,9 +573,11 @@
 		lidMaterial.clearcoatRoughness = glassClearcoatRoughness;
 		lidMaterial.envMapIntensity = glassReflectivity;
 		caseMaterial.envMapIntensity = environmentIntensity;
-		// the mirror disc catches the HDRI's window; hold it a touch above the
-		// room so the glint reads without blowing the whole disc white
-		discMaterial.envMapIntensity = environmentIntensity * 1.5;
+		// Printed labels need to read as ink, not as broad mirror. Their metallic
+		// clamp and edge still catch the room through the material maps.
+		discMaterial.envMapIntensity = styled
+			? environmentIntensity * 0.28
+			: environmentIntensity * 1.5;
 		scene.environmentIntensity = environmentIntensity;
 		// Glass and disc both read scene.environment (the PMREM'd HDRI) — the exact
 		// path the proto is tuned on, so the wall matches it.
@@ -577,6 +598,14 @@
 		iridescenceIOR: 1.35,
 		iridescenceThicknessRange: [320, 720],
 		envMapIntensity: 2.2,
+	});
+	// The label sits above the reflective substrate only for the proto's printed
+	// styles. It is deliberately unlit: physical ink must stay legible under a
+	// bright HDR window, while the disc underneath still supplies metal/glass.
+	const discPrintMaterial = new MeshBasicMaterial({
+		transparent: true,
+		depthWrite: false,
+		toneMapped: true,
 	});
 
 	// Disc-face styles are a proto exploration for now (single case, one album),
@@ -599,9 +628,12 @@
 				discMaps?.dispose();
 				discMaps = maps;
 				discMaterial.map = maps.map;
+				discMaterial.emissiveMap = maps.map;
 				discMaterial.metalnessMap = maps.metalnessMap;
 				discMaterial.roughnessMap = maps.roughnessMap;
 				discMaterial.needsUpdate = true;
+				discPrintMaterial.map = maps.map;
+				discPrintMaterial.needsUpdate = true;
 			})
 			.catch(() => {});
 		return () => {
@@ -986,6 +1018,7 @@
 		caseMaterial.dispose();
 		lidMaterial.dispose();
 		discMaterial.dispose();
+		discPrintMaterial.dispose();
 		discMaps?.dispose();
 	});
 </script>
@@ -1085,6 +1118,8 @@
 			{caseMaterial}
 			{lidMaterial}
 			{discMaterial}
+			discPrintMaterial={preview ? discPrintMaterial : null}
+			discPrintVisible={preview && discStyle !== "mirror"}
 			caseYaw={configuredYaw}
 			casePitch={configuredPitch}
 			caseRoll={configuredRoll}
@@ -1096,6 +1131,8 @@
 			{presentScale}
 			{presentX}
 			{presentY}
+			{openLookX}
+			{openLookY}
 			{discSpin}
 			caseWidth={CASE_W}
 			{caseDepth}

@@ -114,15 +114,38 @@
 	const scroll = new WallScroll();
 	scroll.autoScrollPaused = true;
 	let openedSlot = $state<number | null>(null);
+	let openLookX = $state(0);
+	let openLookY = $state(0);
 	function onopen(slot: number | null) {
 		openedSlot = slot;
 		onopenchange?.(slot !== null);
+		if (slot === null) {
+			openLookX = 0;
+			openLookY = 0;
+		}
+	}
+
+	function trackOpenPointer(event: PointerEvent) {
+		if (openedSlot === null) return;
+		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		openLookX = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+		openLookY = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+	}
+
+	function resetOpenPointer() {
+		openLookX = 0;
+		openLookY = 0;
 	}
 	function onhover() {}
 	function onfail() {}
 </script>
 
-<div class="h-[min(70vh,36rem)] min-h-104 w-full">
+<div
+	class="h-[min(70vh,36rem)] min-h-104 w-full"
+	role="presentation"
+	onpointermove={trackOpenPointer}
+	onpointerleave={resetOpenPointer}
+>
 	<Canvas
 		dpr={Math.min(2, window.devicePixelRatio)}
 		createRenderer={(canvas) => {
@@ -155,6 +178,8 @@
 				{presentScale}
 				{presentX}
 				{presentY}
+				{openLookX}
+				{openLookY}
 				{caseModel}
 				{discStyle}
 				{discSpin}

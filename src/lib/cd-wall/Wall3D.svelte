@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { Canvas } from "@threlte/core";
-	import { onMount } from "svelte";
+	import { onDestroy, onMount } from "svelte";
 	import { WebGLRenderer } from "three";
 	import type { CdAlbum } from "./albums";
 	import CdActions from "./CdActions.svelte";
 	import { albumIndexAt } from "./layout";
+	import { PreviewPlayer } from "./preview-player.svelte";
 	import Scene from "./Scene.svelte";
 	import { WallScroll } from "./scroll";
 
@@ -19,6 +20,21 @@
 	const { albums, openedSlot, onopen, onready, onfail }: Props = $props();
 
 	const scroll = new WallScroll();
+	// The player is owned here, above CdActions, so opening a case fades the
+	// looping preview in and closing fades it out even as the panel unmounts.
+	const player = new PreviewPlayer();
+	onDestroy(() => player.destroy());
+
+	$effect(() => {
+		if (openedSlot === null) {
+			player.close();
+			return;
+		}
+		const album = albums[albumIndexAt(openedSlot, albums.length)];
+		player.open(); // mark open; plays at once if the clip is already resolved
+		void player.load(album); // resolve the preview, auto-playing when ready
+	});
+
 	let host = $state<HTMLElement>();
 	let hovered = $state<{ album: CdAlbum; slot: number } | null>(null);
 	let pressed = false;
@@ -194,7 +210,7 @@
 					</p>
 				{/if}
 				<div class="pointer-events-auto mt-2">
-					<CdActions album={focused} />
+					<CdActions album={focused} {player} />
 				</div>
 			</div>
 		</div>

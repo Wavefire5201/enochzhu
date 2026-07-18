@@ -33,6 +33,9 @@
 		caseMaterial: Material;
 		lidMaterial: Material;
 		discMaterial: Material;
+		/** a thin print layer used by metadata-forward proto disc styles */
+		discPrintMaterial: Material | null;
+		discPrintVisible?: boolean;
 		caseYaw: number;
 		casePitch: number;
 		caseRoll: number;
@@ -49,6 +52,9 @@
 		/** where an opened case settles, so info can sit beside it rather than under */
 		presentX: number;
 		presentY: number;
+		/** -1…1 pointer coordinate from the open-case lab; makes the case meet the cursor */
+		openLookX?: number;
+		openLookY?: number;
 		/** rad/sec the disc turns while this case is open (0 = still) */
 		discSpin: number;
 		caseWidth: number;
@@ -84,6 +90,8 @@
 		caseMaterial,
 		lidMaterial,
 		discMaterial,
+		discPrintMaterial,
+		discPrintVisible = false,
 		caseYaw,
 		casePitch,
 		caseRoll,
@@ -95,6 +103,8 @@
 		presentScale,
 		presentX,
 		presentY,
+		openLookX = 0,
+		openLookY = 0,
 		discSpin,
 		caseWidth,
 		caseDepth,
@@ -113,6 +123,7 @@
 	let inner = $state<Group>();
 	let lidPivot = $state<Group>();
 	let discMesh = $state<Mesh>();
+	let discPrintMesh = $state<Mesh>();
 
 	// One pooled mesh, endlessly recycled: which slot (and so which album) it
 	// shows is derived from the scroll offset every frame (PRD-cd-wall §5.1).
@@ -129,6 +140,7 @@
 	let lidAmount = 0; // 0 = closed, 1 = fully open
 	let present = 0; // 0 = sits in the row, 1 = squared up and held to camera
 	let discSpinAngle = 0; // accumulates while a case is open — the disc spins up
+	let lifeTime = 0; // keeps the surrounding wall quietly alive under focus lock
 
 	// dock hover tuning: how far toward face-on a hover turns the case, and how
 	// much it grows. Deliberately subtle — a nudge that previews the open, not it.
@@ -208,6 +220,7 @@
 
 	useTask((delta) => {
 		if (!outer || !inner || !lidPivot) return;
+		lifeTime += delta;
 		const j = slotForMesh(
 			index,
 			pool,
@@ -245,7 +258,15 @@
 		// out of the row rather than fighting the inner pose
 		outer.position.x =
 			slotX(j, spacing, scroll.offset) + part + present * presentX;
-		outer.position.y = present * presentY;
+		// The focus lock deliberately freezes horizontal scroll. Keep the other
+		// cases breathing a few millimetres in place so the scene still feels like
+		// a living installation, not a paused carousel. The focused case itself is
+		// left stable for readable disc typography and cursor parallax.
+		const ambientLift =
+			openedSlot !== null && slot !== openedSlot
+				? Math.sin(lifeTime * 0.62 + slot * 1.73) * 0.018
+				: 0;
+		outer.position.y = present * presentY + ambientLift;
 
 		// placeholder → art crossfade, only once the texture is actually there.
 		// The map multiplies the base color, so easing the tint to white lets
@@ -299,6 +320,7 @@
 		// as long as the lid is up, and coasts to a stop as the case closes.
 		discSpinAngle += delta * discSpin * lidAmount;
 		if (discMesh) discMesh.rotation.z = discSpinAngle;
+		if (discPrintMesh) discPrintMesh.rotation.z = discSpinAngle;
 
 		// An equirectangular room is infinitely far away: translating a flat case
 		// sideways through it cannot change its reflection. Give resting slots a
@@ -308,19 +330,30 @@
 		// holds still and faces you, so its sway fades out too.
 		const response =
 			reactiveLighting && !inspect ? (1 - present) * (1 - hoverAmount) : 0;
-		const phase = slot * 1.618 - scroll.offset * 0.9;
+		// Scroll moves highlights quickly; time keeps the off-focus cases moving
+		// gently while a focus lock holds scroll.offset perfectly still.
+		const phase = slot * 1.618 - scroll.offset * 0.9 + lifeTime * 0.16;
 		// The skylights in attic-2k are small in angular terms. A couple of
 		// degrees leaves them off the lid entirely; this 8° resting range and
 		// 17° scroll range lets their real HDR radiance sweep across each case.
-		const sway = 0.14 + scroll.energy * 0.16;
+		const sway = (openedSlot !== null ? 0.035 : 0.14) + scroll.energy * 0.16;
 		const lightYaw = Math.sin(phase) * sway * response;
 		const lightPitch = Math.cos(phase * 1.23) * sway * 0.42 * response;
 
 		// hover turns the case partway to face-on; opening turns it the rest
 		const faceMix = Math.max(present, hoverAmount * HOVER_FACE);
-		inner.rotation.y = lerp(caseYaw, presentYaw, faceMix) + spin + lightYaw;
+		// Once open, a small, damped pointer parallax keeps the object responsive
+		// without fighting a deliberate hold-to-turn inspection gesture.
+		const openLook = lidAmount * (inspect ? 0 : 1);
+		const lookYaw = openLookX * 0.2 * openLook;
+		const lookPitch = -openLookY * 0.11 * openLook;
+		inner.rotation.y =
+			lerp(caseYaw, presentYaw, faceMix) + spin + lightYaw + lookYaw;
 		inner.rotation.x =
-			lerp(casePitch, presentPitch, faceMix) + spinPitch + lightPitch;
+			lerp(casePitch, presentPitch, faceMix) +
+			spinPitch +
+			lightPitch +
+			lookPitch;
 		inner.rotation.z = lerp(caseRoll, presentRoll, present);
 		onrotation?.(inner.rotation.x, inner.rotation.y, inner.rotation.z);
 	});
@@ -445,6 +478,19 @@
 			position.y={discY}
 			position.z={discZ}
 		/>
+		{#if discPrintVisible && discPrintMaterial}
+			<!-- The printed label sits a fraction above the reflective substrate.
+			     This keeps metadata ink crisp while the physical disc still owns
+			     edge glints and the spinning silhouette. -->
+			<T.Mesh
+				bind:ref={discPrintMesh}
+				geometry={discGeometry}
+				material={discPrintMaterial}
+				position.x={discX}
+				position.y={discY}
+				position.z={discZ + 0.002}
+			/>
+		{/if}
 		<!-- the lid pivot: hinged at the back edge of the case. The lid +
 		     the cover art (booklet) ride on it, so opening the lid carries
 		     the cover out of the way to reveal the disc. -->
