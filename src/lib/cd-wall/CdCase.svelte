@@ -139,6 +139,11 @@
 	const _edge = new Vector3();
 	const _scale = new Vector3();
 	const _right = new Vector3();
+	// last emitted anchor, so we only push a (reactive) update when it actually
+	// moves — once the opened case settles the dial stops re-rendering every frame
+	let lastAnchorX = Number.NaN;
+	let lastAnchorY = Number.NaN;
+	let lastAnchorR = Number.NaN;
 
 	// One pooled mesh, endlessly recycled: which slot (and so which album) it
 	// shows is derived from the scroll offset every frame (PRD-cd-wall §5.1).
@@ -365,7 +370,18 @@
 			const cy = (-_center.y * 0.5 + 0.5) * h;
 			const ex = (_edge.x * 0.5 + 0.5) * w;
 			const ey = (-_edge.y * 0.5 + 0.5) * h;
-			ondiscanchor(cx, cy, Math.hypot(ex - cx, ey - cy));
+			const cr = Math.hypot(ex - cx, ey - cy);
+			// only emit on real movement, so a settled case leaves the page idle
+			if (
+				!(Math.abs(cx - lastAnchorX) < 0.4) ||
+				!(Math.abs(cy - lastAnchorY) < 0.4) ||
+				!(Math.abs(cr - lastAnchorR) < 0.4)
+			) {
+				lastAnchorX = cx;
+				lastAnchorY = cy;
+				lastAnchorR = cr;
+				ondiscanchor(cx, cy, cr);
+			}
 		}
 
 		// An equirectangular room is infinitely far away: translating a flat case

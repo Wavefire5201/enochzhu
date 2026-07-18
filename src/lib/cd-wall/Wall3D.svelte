@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Canvas } from "@threlte/core";
-	import { onDestroy, onMount } from "svelte";
+	import { onDestroy, onMount, untrack } from "svelte";
 	import { WebGLRenderer } from "three";
 	import type { CdAlbum } from "./albums";
 	import CdActions from "./CdActions.svelte";
@@ -32,13 +32,17 @@
 
 	$effect(() => {
 		if (openedSlot === null) {
-			player.close();
+			untrack(() => player.close());
 			discAnchor = null;
 			return;
 		}
 		const album = albums[albumIndexAt(openedSlot, albums.length)];
-		player.open(); // mark open; plays at once if the clip is already resolved
-		void player.load(album); // resolve the preview, auto-playing when ready
+		// untrack: the player reads its own reactive state (previewUrl) and load()
+		// writes it, so tracking here would loop the effect and spawn audio nodes.
+		untrack(() => {
+			player.open(); // mark open; plays at once if the clip is already resolved
+			void player.load(album); // resolve the preview, auto-playing when ready
+		});
 	});
 
 	let host = $state<HTMLElement>();
