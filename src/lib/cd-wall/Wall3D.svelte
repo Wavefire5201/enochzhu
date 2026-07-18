@@ -4,6 +4,7 @@
 	import { WebGLRenderer } from "three";
 	import type { CdAlbum } from "./albums";
 	import CdActions from "./CdActions.svelte";
+	import DiscDial from "./DiscDial.svelte";
 	import { albumIndexAt } from "./layout";
 	import { PreviewPlayer } from "./preview-player.svelte";
 	import Scene from "./Scene.svelte";
@@ -24,10 +25,15 @@
 	// looping preview in and closing fades it out even as the panel unmounts.
 	const player = new PreviewPlayer();
 	onDestroy(() => player.destroy());
+	// the projected screen position of the open case's disc, for the dial overlay
+	let discAnchor = $state<{ x: number; y: number; radius: number } | null>(
+		null,
+	);
 
 	$effect(() => {
 		if (openedSlot === null) {
 			player.close();
+			discAnchor = null;
 			return;
 		}
 		const album = albums[albumIndexAt(openedSlot, albums.length)];
@@ -175,6 +181,7 @@
 				onhover={(album, slot) =>
 					(hovered = album && slot !== undefined ? { album, slot } : null)}
 				{onfail}
+				ondiscanchor={(x, y, radius) => (discAnchor = { x, y, radius })}
 			/>
 		</Canvas>
 	</div>
@@ -207,6 +214,8 @@
 				</div>
 			</div>
 		</div>
+		<!-- the radial volume + progress dial, anchored over the spinning disc -->
+		<DiscDial {player} anchor={discAnchor} />
 	{/if}
 </div>
 

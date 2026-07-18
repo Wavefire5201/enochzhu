@@ -25,6 +25,8 @@
 		discIridescence: number;
 		discThicknessLo: number;
 		discThicknessHi: number;
+		discLift: number;
+		ondiscanchor?: (x: number, y: number, radius: number) => void;
 		onopenchange?: (open: boolean) => void;
 		hdriPath: string | null;
 		hdriRotation: number;
@@ -76,6 +78,8 @@
 		discIridescence,
 		discThicknessLo,
 		discThicknessHi,
+		discLift,
+		ondiscanchor,
 		onopenchange,
 		hdriPath,
 		hdriRotation,
@@ -186,6 +190,8 @@
 				{discIridescence}
 				{discThicknessLo}
 				{discThicknessHi}
+				{discLift}
+				{ondiscanchor}
 				{hdriPath}
 				{hdriRotation}
 				{backgroundIntensity}

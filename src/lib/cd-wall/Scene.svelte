@@ -131,6 +131,10 @@
 		/** film-thickness range (nm) that sets the iridescent hue sweep */
 		discThicknessLo?: number;
 		discThicknessHi?: number;
+		/** how far the disc lifts toward the viewer as a case opens (world units) */
+		discLift?: number;
+		/** projected opened-disc screen centre + radius, for the HTML dial overlay */
+		ondiscanchor?: (x: number, y: number, radius: number) => void;
 		glassRoughness?: number;
 		glassTransmission?: number;
 		glassClearcoat?: number;
@@ -206,6 +210,8 @@
 		discIridescence = 1,
 		discThicknessLo = 320,
 		discThicknessHi = 720,
+		discLift = 0.06,
+		ondiscanchor,
 		glassRoughness = DEFAULT_CD_CASE_SCENE.glassRoughness,
 		glassTransmission = DEFAULT_CD_CASE_SCENE.glassTransmission,
 		glassClearcoat = DEFAULT_CD_CASE_SCENE.glassClearcoat,
@@ -514,9 +520,23 @@
 	const activeStyle = $derived<DiscStyle>(
 		preview ? discStyle : openedAlbum ? pickDiscStyle(openedAlbum) : "mirror",
 	);
+	// Reduced motion: the case still opens and music still fades, but the disc
+	// holds still and flat — no spin, no lift.
+	let prefersReduced = $state(false);
+	$effect(() => {
+		if (typeof window === "undefined") return;
+		const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+		prefersReduced = mq.matches;
+		const on = () => (prefersReduced = mq.matches);
+		mq.addEventListener("change", on);
+		return () => mq.removeEventListener("change", on);
+	});
 	// The live wall keeps the disc gentle so its printed title stays readable at a
 	// glance while still visibly turning; the proto sets its own spin.
-	const effectiveSpin = $derived(preview ? discSpin : 0.25);
+	const effectiveSpin = $derived(
+		prefersReduced ? 0 : preview ? discSpin : 0.25,
+	);
+	const effectiveLift = $derived(prefersReduced ? 0 : discLift);
 	// The extracted legacy disc mesh is excellent for the bare mirror, but its
 	// UV island only covers the hub area. Printed label systems need a full,
 	// predictable radial UV layout, so any styled face uses the procedural disc.
@@ -1165,6 +1185,8 @@
 			{openLookX}
 			{openLookY}
 			discSpin={effectiveSpin}
+			discLift={effectiveLift}
+			{ondiscanchor}
 			caseWidth={CASE_W}
 			{caseDepth}
 			discX={hub.x}

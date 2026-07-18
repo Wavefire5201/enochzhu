@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { T, useTask } from "@threlte/core";
+	import { T, useTask, useThrelte } from "@threlte/core";
 	import { onDestroy } from "svelte";
 	import type { BufferGeometry, Group, Material, Mesh } from "three";
 	import {
@@ -9,6 +9,7 @@
 		MeshBasicMaterial,
 		MeshPhysicalMaterial,
 		type Texture,
+		Vector3,
 	} from "three";
 	import type { CdAlbum } from "./albums";
 	import { albumIndexAt, slotForMesh, slotX, windowStart } from "./layout";
@@ -57,6 +58,11 @@
 		openLookY?: number;
 		/** rad/sec the disc turns while this case is open (0 = still) */
 		discSpin: number;
+		/** how far the disc rises toward the viewer as it spins up (world units) */
+		discLift?: number;
+		/** reports the opened disc's projected screen centre + radius (px) so an
+		 * HTML dial can be anchored over it; only the open case emits it */
+		ondiscanchor?: (x: number, y: number, radius: number) => void;
 		caseWidth: number;
 		caseDepth: number;
 		/** where the disc sits: the tray's hub in x/y, its face height in z */
@@ -106,6 +112,8 @@
 		openLookX = 0,
 		openLookY = 0,
 		discSpin,
+		discLift = 0,
+		ondiscanchor,
 		caseWidth,
 		caseDepth,
 		discX,
@@ -124,6 +132,13 @@
 	let lidPivot = $state<Group>();
 	let discMesh = $state<Mesh>();
 	let discPrintMesh = $state<Mesh>();
+
+	// used to project the opened disc's centre to screen for the HTML dial overlay
+	const { camera, size } = useThrelte();
+	const _center = new Vector3();
+	const _edge = new Vector3();
+	const _scale = new Vector3();
+	const _right = new Vector3();
 
 	// One pooled mesh, endlessly recycled: which slot (and so which album) it
 	// shows is derived from the scroll offset every frame (PRD-cd-wall §5.1).
@@ -319,8 +334,39 @@
 		// (which eases `present` to 0) never freezes the disc — it keeps spinning
 		// as long as the lid is up, and coasts to a stop as the case closes.
 		discSpinAngle += delta * discSpin * lidAmount;
-		if (discMesh) discMesh.rotation.z = discSpinAngle;
-		if (discPrintMesh) discPrintMesh.rotation.z = discSpinAngle;
+		// the disc also rises out of the tray toward the viewer as it opens, so it
+		// reads as a lifted object, not a texture on a plane; eased by lidAmount.
+		const lift = discLift * lidAmount;
+		if (discMesh) {
+			discMesh.rotation.z = discSpinAngle;
+			discMesh.position.z = discZ + lift;
+		}
+		if (discPrintMesh) {
+			discPrintMesh.rotation.z = discSpinAngle;
+			discPrintMesh.position.z = discZ + 0.002 + lift;
+		}
+
+		// hand the opened disc's screen position to the HTML dial overlay
+		if (ondiscanchor && discMesh && slot === openedSlot && lidAmount > 0.02) {
+			const cam = camera.current;
+			if (!discMesh.geometry.boundingSphere)
+				discMesh.geometry.computeBoundingSphere();
+			discMesh.getWorldPosition(_center);
+			discMesh.getWorldScale(_scale);
+			const worldR =
+				(discMesh.geometry.boundingSphere?.radius ?? 0.5) * _scale.x;
+			_right.setFromMatrixColumn(cam.matrixWorld, 0).multiplyScalar(worldR);
+			_edge.copy(_center).add(_right);
+			_center.project(cam);
+			_edge.project(cam);
+			const w = $size.width;
+			const h = $size.height;
+			const cx = (_center.x * 0.5 + 0.5) * w;
+			const cy = (-_center.y * 0.5 + 0.5) * h;
+			const ex = (_edge.x * 0.5 + 0.5) * w;
+			const ey = (-_edge.y * 0.5 + 0.5) * h;
+			ondiscanchor(cx, cy, Math.hypot(ex - cx, ey - cy));
+		}
 
 		// An equirectangular room is infinitely far away: translating a flat case
 		// sideways through it cannot change its reflection. Give resting slots a

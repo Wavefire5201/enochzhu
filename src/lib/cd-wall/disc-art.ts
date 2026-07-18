@@ -732,7 +732,13 @@ function halftoneBase(
 					const rad = (cell / 2) * Math.sqrt(1 - lum) * 1.28;
 					if (rad < 0.4) continue;
 					ctx.beginPath();
-					ctx.arc(x * cell + cell / 2, y * cell + cell / 2, rad, 0, Math.PI * 2);
+					ctx.arc(
+						x * cell + cell / 2,
+						y * cell + cell / 2,
+						rad,
+						0,
+						Math.PI * 2,
+					);
 					ctx.fill();
 				}
 			}
@@ -745,7 +751,12 @@ function halftoneBase(
 			ctx.lineJoin = "round";
 			ctx.strokeStyle = album.color;
 			ctx.lineWidth = 7;
-			ctx.strokeText(album.title.toLowerCase(), C, C - R_CLAMP - 46, R_OUT * 1.1);
+			ctx.strokeText(
+				album.title.toLowerCase(),
+				C,
+				C - R_CLAMP - 46,
+				R_OUT * 1.1,
+			);
 			ctx.fillStyle = readable(album.color);
 			ctx.fillText(album.title.toLowerCase(), C, C - R_CLAMP - 46, R_OUT * 1.1);
 			const sub = [album.artist, album.year]
