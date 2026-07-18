@@ -193,23 +193,16 @@
 			class="pointer-events-none absolute inset-y-0 left-1/2 z-10 flex items-center pl-[11rem] sm:pl-[15rem]"
 			style="text-shadow: 0 1px 14px var(--color-bg), 0 0 36px var(--color-bg)"
 		>
-			<div class="flex w-[19rem] flex-col gap-2">
+			<!-- the disc itself now carries title/artist/year; this caption is
+			     trimmed to the blurb + controls -->
+			<div class="flex w-[19rem] flex-col gap-3">
 				<span class="inline-block size-2 bg-white"></span>
-				<h3 class="font-display text-3xl text-bright italic sm:text-4xl">
-					{focused.title}
-				</h3>
-				{#if focused.artist}
-					<p class="font-mono text-sm text-fg">{focused.artist}</p>
-				{/if}
-				{#if focused.year}
-					<p class="font-mono text-xs text-muted">{focused.year}</p>
-				{/if}
 				{#if focused.note}
 					<p class="text-sm leading-relaxed text-muted">
 						{focused.note}
 					</p>
 				{/if}
-				<div class="pointer-events-auto mt-2">
+				<div class="pointer-events-auto">
 					<CdActions album={focused} {player} />
 				</div>
 			</div>

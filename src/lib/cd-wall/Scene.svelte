@@ -36,8 +36,13 @@
 	import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 	import type { CdAlbum } from "./albums";
 	import CdCase from "./CdCase.svelte";
-	import { createDiscMaps, type DiscMaps, type DiscStyle } from "./disc-art";
-	import { poolSize } from "./layout";
+	import {
+		createDiscMaps,
+		type DiscMaps,
+		type DiscStyle,
+		pickDiscStyle,
+	} from "./disc-art";
+	import { albumIndexAt, poolSize } from "./layout";
 	import {
 		BOOKLET_RECT,
 		CASE_MODEL_HUB,
@@ -496,14 +501,27 @@
 	const cardGeometry = $derived(selectedModel?.card ?? null);
 	const lidGeometry = $derived(selectedModel?.lid ?? fallbackLid);
 	const artGeometry = $derived(selectedModel ? modeledArt : fallbackArt);
+	// The disc face is a proto exploration AND the live wall's payoff. The proto
+	// drives it directly from the `discStyle` control; the live wall assigns a
+	// per-album face (hybrid: explicit override or a hash-picked pool) to whatever
+	// case is currently open. Only the opened case reveals its disc, so a single
+	// shared material/geometry keyed on the opened album is enough.
+	const openedAlbum = $derived(
+		openedSlot !== null && albums.length
+			? albums[albumIndexAt(openedSlot, albums.length)]
+			: null,
+	);
+	const activeStyle = $derived<DiscStyle>(
+		preview ? discStyle : openedAlbum ? pickDiscStyle(openedAlbum) : "mirror",
+	);
+	// The live wall keeps the disc gentle so its printed title stays readable at a
+	// glance while still visibly turning; the proto sets its own spin.
+	const effectiveSpin = $derived(preview ? discSpin : 0.25);
 	// The extracted legacy disc mesh is excellent for the bare mirror, but its
 	// UV island only covers the hub area. Printed label systems need a full,
-	// predictable radial UV layout, so the proto uses the procedural disc for
-	// every non-mirror style.
+	// predictable radial UV layout, so any styled face uses the procedural disc.
 	const discGeometry = $derived(
-		preview && discStyle !== "mirror"
-			? fallbackDisc
-			: (modeledDisc ?? fallbackDisc),
+		activeStyle !== "mirror" ? fallbackDisc : (modeledDisc ?? fallbackDisc),
 	);
 	const caseDepth = $derived(selectedModel?.caseDepth ?? CASE_D);
 	// Modeled parts already sit at their assembly positions (lidZ 0); only the
@@ -547,7 +565,7 @@
 		// matte label with shiny clamp/edge rings; the map textures are applied in
 		// the async effect below, these are the scalar counterparts. mirror = the
 		// original bare disc.
-		const styled = discStyle !== "mirror";
+		const styled = activeStyle !== "mirror";
 		discMaterial.roughness = styled ? 0.55 : discRoughness;
 		discMaterial.metalness = styled ? 1 : 0.9;
 		// bare mirror disc gets the tunable rainbow; a printed label keeps only a
@@ -608,16 +626,29 @@
 		toneMapped: true,
 	});
 
-	// Disc-face styles are a proto exploration for now (single case, one album),
-	// so the maps derive from albums[0] and only apply in preview. "art" loads the
-	// cover, so this is async; the material's scalar props live in the effect
-	// above, keyed on the same discStyle.
+	// Build the disc maps for whichever face is active: the proto's single album,
+	// or (on the live wall) the album of the currently-open case. Only the opened
+	// disc is ever visible, so one shared material is enough. "art"/"halftone"
+	// load the cover, so this is async; the scalar props live in the effect above.
 	let discMaps: DiscMaps | null = null;
+	function clearDiscMaps() {
+		discMaterial.map = null;
+		discMaterial.emissiveMap = null;
+		discMaterial.metalnessMap = null;
+		discMaterial.roughnessMap = null;
+		discMaterial.needsUpdate = true;
+		discPrintMaterial.map = null;
+		discPrintMaterial.needsUpdate = true;
+		discMaps?.dispose();
+		discMaps = null;
+	}
 	$effect(() => {
-		if (!preview) return;
-		const style = discStyle;
-		const album = albums[0];
-		if (!album) return;
+		const style = activeStyle;
+		const album = preview ? albums[0] : openedAlbum;
+		if (style === "mirror" || !album) {
+			clearDiscMaps();
+			return;
+		}
 		let cancelled = false;
 		createDiscMaps(style, album)
 			.then((maps) => {
@@ -1118,8 +1149,8 @@
 			{caseMaterial}
 			{lidMaterial}
 			{discMaterial}
-			discPrintMaterial={preview ? discPrintMaterial : null}
-			discPrintVisible={preview && discStyle !== "mirror"}
+			discPrintMaterial={activeStyle !== "mirror" ? discPrintMaterial : null}
+			discPrintVisible={activeStyle !== "mirror"}
 			caseYaw={configuredYaw}
 			casePitch={configuredPitch}
 			caseRoll={configuredRoll}
@@ -1133,7 +1164,7 @@
 			{presentY}
 			{openLookX}
 			{openLookY}
-			{discSpin}
+			discSpin={effectiveSpin}
 			caseWidth={CASE_W}
 			{caseDepth}
 			discX={hub.x}
