@@ -33,8 +33,3 @@ references/
 .playwright-mcp/
 
 src/routes/proto/
-
-# Generated static assets
-/static/favicon*
-/static/icon-*
-/static/site.webmanifest
