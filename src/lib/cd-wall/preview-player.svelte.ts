@@ -5,8 +5,8 @@ import type { CdAlbum } from "./albums";
  * panel (created by Wall3D / the proto lab, not inside CdActions) so it survives
  * the panel's mount/unmount: opening a case fades the clip in and loops it,
  * closing fades it out — and the fade-out completes even as the panel is torn
- * down. The reactive fields back the play button, the radial dial, and the
- * progress ring; the audio element itself is detached from the DOM.
+ * down. The reactive fields back the play button and the ambient volume orb;
+ * the audio element itself is detached from the DOM.
  */
 
 type SearchResponse = { results?: Array<{ previewUrl?: string }> };
@@ -30,12 +30,9 @@ export class PreviewPlayer {
 	previewUrl = $state<string | null>(null);
 	loading = $state(false);
 	playing = $state(false);
-	muted = $state(false);
 	/** target playback level (0..1); the live fade rides toward it */
-	volume = $state(0.7);
-	/** clip position + length, in seconds — drives the progress ring */
-	currentTime = $state(0);
-	duration = $state(0);
+	volume = $state(0.2);
+	inspecting = $state(false);
 
 	#audio: HTMLAudioElement | null = null;
 	#fade: number | null = null;
@@ -47,8 +44,6 @@ export class PreviewPlayer {
 	async load(album: CdAlbum): Promise<void> {
 		this.#teardownAudio();
 		this.previewUrl = null;
-		this.currentTime = 0;
-		this.duration = 0;
 		const query = [album.artist, album.title].filter(Boolean).join(" ");
 		if (!query) return;
 		this.loading = true;
@@ -77,11 +72,6 @@ export class PreviewPlayer {
 		a.preload = "metadata";
 		a.loop = true; // the clip loops so an open case never falls silent
 		a.volume = 0;
-		a.addEventListener("timeupdate", () => (this.currentTime = a.currentTime));
-		a.addEventListener(
-			"loadedmetadata",
-			() => (this.duration = a.duration || 0),
-		);
 		this.#audio = a;
 		return a;
 	}
@@ -95,7 +85,7 @@ export class PreviewPlayer {
 			.play()
 			.then(() => (this.playing = true))
 			.catch(() => (this.playing = false));
-		this.#fadeTo(this.muted ? 0 : this.volume);
+		this.#fadeTo(this.volume);
 	}
 
 	/** case closed → fade the preview out, then pause. Safe to call repeatedly. */
@@ -124,30 +114,12 @@ export class PreviewPlayer {
 
 	setVolume(v: number): void {
 		this.volume = clamp01(v);
-		if (this.muted && this.volume > 0) this.muted = false;
 		// live drag: bypass the fade and set the element directly
 		const a = this.#audio;
 		if (a && this.#wantPlay) {
 			this.#cancelFade();
-			a.volume = this.muted ? 0 : this.volume;
+			a.volume = this.volume;
 		}
-	}
-
-	toggleMute(): void {
-		this.muted = !this.muted;
-		this.#fadeTo(this.muted ? 0 : this.volume);
-	}
-
-	seek(seconds: number): void {
-		const a = this.#audio;
-		if (!a || !this.duration) return;
-		a.currentTime = Math.max(0, Math.min(seconds, this.duration));
-		this.currentTime = a.currentTime;
-	}
-
-	/** 0..1 playback position, for the progress ring */
-	get progress(): number {
-		return this.duration ? this.currentTime / this.duration : 0;
 	}
 
 	#fadeTo(target: number, done?: () => void): void {
@@ -159,7 +131,7 @@ export class PreviewPlayer {
 		const start = performance.now();
 		const step = (now: number) => {
 			const t = Math.min(1, (now - start) / dur);
-			a.volume = from + (target - from) * t;
+			a.volume = clamp01(from + (target - from) * t);
 			if (t < 1) {
 				this.#fade = requestAnimationFrame(step);
 			} else {

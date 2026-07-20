@@ -3,8 +3,6 @@
 	import { onDestroy, onMount, untrack } from "svelte";
 	import { WebGLRenderer } from "three";
 	import type { CdAlbum } from "./albums";
-	import CdActions from "./CdActions.svelte";
-	import DiscDial from "./DiscDial.svelte";
 	import { albumIndexAt } from "./layout";
 	import { PreviewPlayer } from "./preview-player.svelte";
 	import Scene from "./Scene.svelte";
@@ -25,15 +23,10 @@
 	// looping preview in and closing fades it out even as the panel unmounts.
 	const player = new PreviewPlayer();
 	onDestroy(() => player.destroy());
-	// the projected screen position of the open case's disc, for the dial overlay
-	let discAnchor = $state<{ x: number; y: number; radius: number } | null>(
-		null,
-	);
 
 	$effect(() => {
 		if (openedSlot === null) {
 			untrack(() => player.close());
-			discAnchor = null;
 			return;
 		}
 		const album = albums[albumIndexAt(openedSlot, albums.length)];
@@ -140,6 +133,12 @@
 		window.removeEventListener("pointerup", up);
 		window.removeEventListener("pointercancel", up);
 	}
+
+	function setVolume(event: Event) {
+		player.setVolume(
+			Number((event.currentTarget as HTMLInputElement).value) / 100,
+		);
+	}
 </script>
 
 <!-- decorative: the accessible album list lives in CdWall -->
@@ -185,7 +184,7 @@
 				onhover={(album, slot) =>
 					(hovered = album && slot !== undefined ? { album, slot } : null)}
 				{onfail}
-				ondiscanchor={(x, y, radius) => (discAnchor = { x, y, radius })}
+				{player}
 			/>
 		</Canvas>
 	</div>
@@ -195,31 +194,98 @@
 	     Sits OUTSIDE the mask so the type stays crisp over the bright glass. -->
 	{#if openedSlot !== null}
 		{@const focused = albums[albumIndexAt(openedSlot, albums.length)]}
-		<!-- text hugs the centered case's right edge. No scrim box — a black panel
-		     read as a seam against the page's #0c110e; a bg-colored text-shadow
-		     dissolves any bright reflection behind the glyphs instead. The pl
-		     offset clears the case, which squares up at ~half its scaled width
-		     right of screen center. -->
+		
+		<!-- Center bottom listening link, placed below the 3D CD case and the sliding bottom artist text -->
+		{#if focused.link}
+			<div
+				class="pointer-events-none absolute inset-x-0 bottom-6 sm:bottom-10 z-10 flex justify-center transition-opacity duration-300 {player.inspecting ? 'opacity-0' : 'opacity-100'}"
+			>
+				<a
+					class="pointer-events-auto link-trace font-display text-base text-muted hover:text-ember transition-all"
+					href={focused.link}
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					listen full album ↗
+				</a>
+			</div>
+		{/if}
+
+		<!-- HUD overlay containing both flat vertical control strip and notes.
+		     On mobile, it centers at the bottom (below the case).
+		     On desktop, it floats on the right of the CD case. -->
 		<div
-			class="pointer-events-none absolute inset-y-0 left-1/2 z-10 flex items-center pl-[11rem] sm:pl-[15rem]"
+			class="pointer-events-none absolute z-10 flex items-center gap-6 transition-all duration-300
+			       inset-x-0 bottom-20 justify-center pl-0
+			       sm:inset-y-0 sm:bottom-0 sm:left-1/2 sm:right-auto sm:justify-start sm:pl-[12.5rem] md:pl-[14.5rem] lg:pl-[16.5rem]
+			       {player.inspecting ? 'opacity-0 pointer-events-none' : 'opacity-100'}"
 			style="text-shadow: 0 1px 14px var(--color-bg), 0 0 36px var(--color-bg)"
 		>
-			<!-- the disc itself now carries title/artist/year; this caption is
-			     trimmed to the blurb + controls -->
-			<div class="flex w-[19rem] flex-col gap-3">
-				<span class="inline-block size-2 bg-white"></span>
-				{#if focused.note}
+			<!-- Flat Vertical Control Panel (monotone, no background, 100% native interaction) -->
+			{#if player.previewUrl || player.loading}
+				<div class="pointer-events-auto flex flex-col items-center gap-4 py-2 select-none">
+					<div class="slider-container relative flex h-24 w-4 items-center justify-center">
+						<!-- Track line -->
+						<div class="absolute h-20 w-[1.5px] bg-muted/40">
+							<div
+								class="absolute bottom-0 left-0 right-0 bg-bright"
+								style="height: {player.volume * 100}%"
+							></div>
+						</div>
+						<!-- Native range input rotated -->
+						<input
+							type="range"
+							min="0"
+							max="100"
+							step="1"
+							value={Math.round(player.volume * 100)}
+							oninput={setVolume}
+							class="flat-vertical-slider"
+							aria-label="Volume"
+						/>
+					</div>
+
+					<!-- Divider line -->
+					<div class="w-4 h-[1px] bg-muted/30"></div>
+
+					<!-- Play/Pause Button -->
+					{#if player.loading}
+						<div class="flex size-8 items-center justify-center rounded-full border border-muted/20 bg-bright/5 animate-pulse">
+							<div class="size-1.5 rounded-full bg-muted"></div>
+						</div>
+					{:else}
+						<button
+							type="button"
+							class="play-pause-flat-btn flex size-8 items-center justify-center text-muted hover:text-bright hover:scale-110 transition-all cursor-pointer"
+							onclick={() => player.toggle()}
+							aria-label={player.playing ? "Pause preview" : "Play preview"}
+						>
+							{#if player.playing}
+								<!-- Pause Icon -->
+								<svg class="size-3.5 fill-current" viewBox="0 0 24 24">
+									<rect x="5" y="4" width="4" height="16" />
+									<rect x="15" y="4" width="4" height="16" />
+								</svg>
+							{:else}
+								<!-- Play Icon -->
+								<svg class="size-3.5 fill-current ml-0.5" viewBox="0 0 24 24">
+									<path d="M8 5v14l11-7z" />
+								</svg>
+							{/if}
+						</button>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Notes -->
+			{#if focused.note}
+				<div class="flex w-[14rem] sm:w-[17rem] flex-col gap-3">
 					<p class="text-sm leading-relaxed text-muted">
 						{focused.note}
 					</p>
-				{/if}
-				<div class="pointer-events-auto">
-					<CdActions album={focused} {player} />
 				</div>
-			</div>
+			{/if}
 		</div>
-		<!-- the radial volume + progress dial, anchored over the spinning disc -->
-		<DiscDial {player} anchor={discAnchor} />
 	{/if}
 </div>
 
@@ -270,5 +336,61 @@
 				transparent
 			);
 		mask-composite: intersect;
+	}
+
+	.slider-container {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.25rem;
+		height: 5.5rem;
+	}
+
+	.flat-vertical-slider {
+		position: absolute;
+		width: 5.5rem; /* acts as height when rotated */
+		height: 1.25rem; /* acts as width when rotated */
+		margin: 0;
+		cursor: pointer;
+		transform: rotate(-90deg);
+		appearance: none;
+		-webkit-appearance: none;
+		background: transparent;
+		outline: none;
+	}
+
+	.flat-vertical-slider::-webkit-slider-runnable-track {
+		background: transparent;
+	}
+
+	.flat-vertical-slider::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		width: 0.55rem;
+		height: 0.55rem;
+		border-radius: 50%;
+		background: var(--color-bright);
+		cursor: pointer;
+		transition: transform 120ms ease, background-color 120ms ease;
+	}
+
+	.flat-vertical-slider::-webkit-slider-thumb:hover {
+		transform: scale(1.3);
+		background-color: var(--color-ember);
+	}
+
+	.flat-vertical-slider::-moz-range-thumb {
+		width: 0.55rem;
+		height: 0.55rem;
+		border-radius: 50%;
+		background: var(--color-bright);
+		cursor: pointer;
+		transition: transform 120ms ease, background-color 120ms ease;
+	}
+
+	.flat-vertical-slider::-moz-range-thumb:hover {
+		transform: scale(1.3);
+		background-color: var(--color-ember);
 	}
 </style>

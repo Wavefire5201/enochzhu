@@ -11,6 +11,8 @@
 	const { album, player }: Props = $props();
 </script>
 
+<!-- transport only: the ambient volume orb is rendered by the parent, below this
+     pill, so it sits beneath the case rather than inside the transport row -->
 <div class="cd-actions" aria-label="album actions">
 	{#if player.previewUrl}
 		<button

@@ -2,7 +2,7 @@
 	import { Canvas } from "@threlte/core";
 	import { WebGLRenderer } from "three";
 	import type { CdAlbum } from "./albums";
-	import type { DiscStyle } from "./disc-art";
+	import type { DiscStyle, HalftoneOptions, DitherDiscOptions } from "./disc-art";
 	import type { JewelCaseModel } from "./models";
 	import Scene from "./Scene.svelte";
 	import { WallScroll } from "./scroll";
@@ -21,12 +21,12 @@
 		presentY: number;
 		caseModel: JewelCaseModel;
 		discStyle: DiscStyle;
+		halftoneOptions: HalftoneOptions;
 		discSpin: number;
 		discIridescence: number;
 		discThicknessLo: number;
 		discThicknessHi: number;
 		discLift: number;
-		ondiscanchor?: (x: number, y: number, radius: number) => void;
 		onopenchange?: (open: boolean) => void;
 		hdriPath: string | null;
 		hdriRotation: number;
@@ -58,6 +58,7 @@
 		bloomStrength: number;
 		bloomRadius: number;
 		bloomThreshold: number;
+		ditherOptions: DitherDiscOptions;
 	}
 
 	const {
@@ -74,12 +75,12 @@
 		presentY,
 		caseModel,
 		discStyle,
+		halftoneOptions,
 		discSpin,
 		discIridescence,
 		discThicknessLo,
 		discThicknessHi,
 		discLift,
-		ondiscanchor,
 		onopenchange,
 		hdriPath,
 		hdriRotation,
@@ -111,6 +112,7 @@
 		bloomStrength,
 		bloomRadius,
 		bloomThreshold,
+		ditherOptions,
 	}: Props = $props();
 
 	// the proto is a single stationary case: the row never drifts, coasts, or
@@ -118,38 +120,15 @@
 	const scroll = new WallScroll();
 	scroll.autoScrollPaused = true;
 	let openedSlot = $state<number | null>(null);
-	let openLookX = $state(0);
-	let openLookY = $state(0);
 	function onopen(slot: number | null) {
 		openedSlot = slot;
 		onopenchange?.(slot !== null);
-		if (slot === null) {
-			openLookX = 0;
-			openLookY = 0;
-		}
-	}
-
-	function trackOpenPointer(event: PointerEvent) {
-		if (openedSlot === null) return;
-		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-		openLookX = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
-		openLookY = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
-	}
-
-	function resetOpenPointer() {
-		openLookX = 0;
-		openLookY = 0;
 	}
 	function onhover() {}
 	function onfail() {}
 </script>
 
-<div
-	class="h-[min(70vh,36rem)] min-h-104 w-full"
-	role="presentation"
-	onpointermove={trackOpenPointer}
-	onpointerleave={resetOpenPointer}
->
+<div class="h-[min(70vh,36rem)] min-h-104 w-full" role="presentation">
 	<Canvas
 		dpr={Math.min(2, window.devicePixelRatio)}
 		createRenderer={(canvas) => {
@@ -182,16 +161,14 @@
 				{presentScale}
 				{presentX}
 				{presentY}
-				{openLookX}
-				{openLookY}
 				{caseModel}
 				{discStyle}
+				{halftoneOptions}
 				{discSpin}
 				{discIridescence}
 				{discThicknessLo}
 				{discThicknessHi}
 				{discLift}
-				{ondiscanchor}
 				{hdriPath}
 				{hdriRotation}
 				{backgroundIntensity}
@@ -223,6 +200,7 @@
 				{bloomRadius}
 				{bloomThreshold}
 				preview
+				{ditherOptions}
 			/>
 		{/key}
 	</Canvas>
