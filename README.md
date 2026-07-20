@@ -52,5 +52,15 @@ without the worker.
 ## /now page
 
 `/now` renders from `src/content/now/now.md` (copy `now.md.example` and write it).
-Until that file exists the route serves the fog 404. Curated albums on `/` come from
-`src/content/music/*.md` with cover art in `static/music/`.
+Until that file exists the route serves the fog 404.
+
+## Curated Albums
+
+Curated albums on `/` are configured in `src/content/music.ts`. The schema supports:
+
+- `previewTrack`: Optional track name to search for on iTunes (rather than using the album name).
+- `previewUrl`: Optional direct HTTPS link to a 30-second preview audio clip (skips iTunes lookup entirely).
+- **turntable-spin**: Pausing the audio smoothly decelerates the disc spin to a stop like a real turntable; resuming spins it back up.
+- **stateful seek**: The player stores the current playback position per-album, allowing you to resume exactly where you left off when closing and reopening a CD.
+
+Cover images and video textures are placed in `static/music/`.
