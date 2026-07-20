@@ -2,7 +2,6 @@
 	import "../app.css";
 	import { type Component } from "svelte";
 	import { page } from "$app/state";
-	import favicon from "$lib/assets/favicon.svg";
 	import NowPlaying from "$lib/listening/NowPlaying.svelte";
 
 	const { children } = $props();
@@ -42,7 +41,6 @@
 <svelte:window onkeydown={onKeydown} />
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
 	<link rel="canonical" href={canonical} />
 	<meta name="theme-color" content="#0c110e" />
 

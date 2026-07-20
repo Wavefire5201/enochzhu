@@ -26,13 +26,15 @@
 </script>
 
 <Seo
-	title="enoch zhu — cs @ ut austin"
-	description="enoch zhu — cs @ ut austin. projects and photos."
+	title="enoch zhu · cs @ ut austin"
+	description="enoch zhu · cs @ ut austin. projects and photos."
 />
 
 <svelte:head>
 	{#if jsonld}
-		{@html `<script type="application/ld+json">${jsonld}</script>`}
+		<script type="application/ld+json">
+			{@html jsonld}
+		</script>
 	{/if}
 </svelte:head>
 

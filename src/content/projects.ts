@@ -84,4 +84,14 @@ export const projectEntries: (z.input<typeof projectSchema> & {
 		live: "https://txtfx.wavefire.co",
 		featured: true,
 	},
+	{
+		slug: "enochzhu",
+		title: "enochzhu",
+		description: "my personal website",
+		stack: ["sveltekit, webgl, cloudflare"],
+		year: 2026,
+		github: "https://github.com/Wavefire5201/enochzhu",
+		live: "https://enochzhu.com",
+		featured: true,
+	},
 ];
