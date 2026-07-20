@@ -2,6 +2,7 @@
 name: enoch zhu
 title: cs @ ut austin
 location: austin, texas
+bio: i build clean things and run everything else myself. cs at ut austin, but the interesting parts are mostly off the transcript.
 experience:
   - role: swe intern
     organization: icelis global

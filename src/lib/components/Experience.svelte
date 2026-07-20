@@ -55,7 +55,7 @@
 						>
 							<svg
 								viewBox="0 0 120 100"
-								class="mr-8 mb-2 h-14 w-17"
+								class="mr-4 mb-2 h-14 w-17"
 								fill="none"
 								stroke="currentColor"
 								stroke-width="2.5"

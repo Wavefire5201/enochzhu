@@ -30,6 +30,7 @@ export const aboutSchema = z.object({
 	name: z.string(),
 	title: z.string(),
 	location: z.string().optional(),
+	bio: z.string().optional(),
 	/**
 	 * Freeform, ordered About rows. Add / reorder / rename sections purely in
 	 * about.md — no schema change needed. Each renders a label plus either

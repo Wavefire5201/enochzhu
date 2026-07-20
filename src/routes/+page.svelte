@@ -43,17 +43,17 @@
 		<Hero about={about.meta} />
 	{/if}
 
-	<Projects {projects} />
+	{#if about}
+		<About about={about.meta} />
+	{/if}
 
 	{#if about}
 		<Experience about={about.meta} />
 	{/if}
 
-	<Photos {photos} />
+	<Projects {projects} />
 
-	{#if about}
-		<About about={about.meta} />
-	{/if}
+	<Photos {photos} />
 
 	{#if about}
 		<Contact about={about.meta} />

@@ -41,7 +41,15 @@
 								{project.meta.description}
 							</p>
 							{#if project.meta.stack.length > 0}
-								<p class="mt-1.5 font-mono text-xs text-muted">
+								<!-- Mobile: show first 3 tags with +X indicator -->
+								<p class="mt-1.5 font-mono text-xs text-muted block sm:hidden">
+									{project.meta.stack.slice(0, 3).join(" · ")}
+									{#if project.meta.stack.length > 3}
+										{" · +"}{project.meta.stack.length - 3}
+									{/if}
+								</p>
+								<!-- Desktop: show full list -->
+								<p class="mt-1.5 font-mono text-xs text-muted hidden sm:block">
 									{project.meta.stack.join(" · ")}
 								</p>
 							{/if}

@@ -226,9 +226,9 @@
 				aria-label="sections"
 				class="hidden gap-5 font-mono text-sm text-fg sm:flex"
 			>
-				<a class="link-trace" href="#projects">projects</a>
-				<a class="link-trace" href="#experience">experience</a>
 				<a class="link-trace" href="#about">about</a>
+				<a class="link-trace" href="#experience">experience</a>
+				<a class="link-trace" href="#projects">projects</a>
 				<a class="link-trace" href="#contact">contact</a>
 				<a class="link-trace" href="/now">now</a>
 			</nav>
@@ -240,9 +240,9 @@
 		aria-label="sections"
 		class="absolute bottom-16 left-6 z-10 flex flex-col items-start gap-1 font-mono text-sm text-fg sm:hidden"
 	>
-		<a class="link-trace" href="#projects">projects</a>
-		<a class="link-trace" href="#experience">experience</a>
 		<a class="link-trace" href="#about">about</a>
+		<a class="link-trace" href="#experience">experience</a>
+		<a class="link-trace" href="#projects">projects</a>
 		<a class="link-trace" href="#contact">contact</a>
 		<a class="link-trace" href="/now">now</a>
 	</nav>

@@ -12,7 +12,7 @@
 	<h2 id="about" class="scroll-mt-8 font-mono text-sm text-muted">about</h2>
 
 	<div
-		class="mt-8 grid gap-10 border-t border-line pt-8 sm:grid-cols-[13rem_1fr] sm:gap-12"
+		class="mt-8 grid gap-y-10 border-t border-line pt-8 sm:grid-cols-[13rem_1fr] sm:gap-x-20"
 	>
 		<div>
 			<p class="font-display text-3xl leading-tight text-bright">
@@ -20,6 +20,13 @@
 			</p>
 			{#if about.location}
 				<p class="mt-2 font-mono text-xs text-muted">{about.location}</p>
+			{/if}
+			{#if about.bio}
+				<p
+					class="mt-6 font-mono text-xs leading-relaxed text-muted whitespace-pre-line"
+				>
+					{about.bio}
+				</p>
 			{/if}
 		</div>
 
