@@ -1,4 +1,5 @@
 import { CanvasTexture, SRGBColorSpace } from "three";
+import { buildGlyphAtlas } from "../hero/glyph-atlas";
 import type { CdAlbum } from "./albums";
 
 /**
@@ -20,9 +21,12 @@ export type DiscStyle =
 	| "duotone"
 	| "pressed"
 	| "halftone"
+	| "halftone-clean"
 	| "geo"
 	| "marquee"
-	| "index";
+	| "index"
+	| "ascii"
+	| "dither";
 
 export const DISC_STYLES: { value: DiscStyle; label: string; hint: string }[] =
 	[
@@ -67,6 +71,11 @@ export const DISC_STYLES: { value: DiscStyle; label: string; hint: string }[] =
 			hint: "Cover art rendered as a one-tone dot screen over the album colour — a screen-printed graphic with the title set clean near the hub.",
 		},
 		{
+			value: "halftone-clean",
+			label: "halftone + clean label",
+			hint: "A restrained dot field carries the cover image while the clean label's quiet title, subtitle, and single accent ring keep the disc legible.",
+		},
+		{
 			value: "geo",
 			label: "generative geometry",
 			hint: "Textless palette-seeded mandala — concentric segmented rings and rays derived from the album, unique to each record. Leans on the caption for words.",
@@ -80,6 +89,16 @@ export const DISC_STYLES: { value: DiscStyle; label: string; hint: string }[] =
 			value: "index",
 			label: "index card",
 			hint: "Monospace card-catalog grid: a big stacked lowercase title over a hairline baseline grid, year set as a coordinate.",
+		},
+		{
+			value: "ascii",
+			label: "ascii dither",
+			hint: "Cover art transcoded to a glyph field with the home hero's coverage-equalized atlas — every glyph coloured from the album's own palette over a dim wash of the cover.",
+		},
+		{
+			value: "dither",
+			label: "1-bit dither",
+			hint: "Pure ordered-dither of the cover in one colour — the dominant palette shade on a dark disc. No type, no dots, just pixel cells.",
 		},
 		{
 			value: "label",
@@ -104,6 +123,36 @@ export interface DiscMaps {
 	roughnessMap: CanvasTexture | null;
 	dispose(): void;
 }
+
+export interface HalftoneOptions {
+	/** number of dot cells across the source image */
+	density: number;
+	/** maximum dot radius as a fraction of each cell */
+	dotScale: number;
+	/** contrast curve applied before dot size is calculated */
+	contrast: number;
+	/** ink strength over the album-colour paper */
+	inkOpacity: number;
+}
+
+export const DEFAULT_HALFTONE_OPTIONS: HalftoneOptions = {
+	density: 66,
+	dotScale: 1.28,
+	contrast: 1,
+	inkOpacity: 0.82,
+};
+
+export interface DitherDiscOptions {
+	density: number;
+	colorMode: "bw" | "album" | "green" | "amber";
+	contrast: number;
+}
+
+export const DEFAULT_DITHER_DISC_OPTIONS: DitherDiscOptions = {
+	density: 256,
+	colorMode: "bw",
+	contrast: 1.0,
+};
 
 const SIZE = 1024;
 const C = SIZE / 2;
@@ -137,6 +186,21 @@ function ring(
 	ctx.arc(C, C, inner, 0, Math.PI * 2, true);
 	ctx.fillStyle = fill;
 	ctx.fill("evenodd");
+}
+
+function clearRing(
+	ctx: CanvasRenderingContext2D,
+	inner: number,
+	outer: number,
+) {
+	ctx.save();
+	ctx.globalCompositeOperation = "destination-out";
+	ctx.beginPath();
+	ctx.arc(C, C, outer, 0, Math.PI * 2);
+	ctx.arc(C, C, inner, 0, Math.PI * 2, true);
+	ctx.fillStyle = "rgba(0,0,0,1)";
+	ctx.fill("evenodd");
+	ctx.restore();
 }
 
 function texture(el: HTMLCanvasElement, srgb: boolean): CanvasTexture {
@@ -698,12 +762,14 @@ function pressedBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
 function halftoneBase(
 	album: CdAlbum,
 	palette: string[],
+	options: HalftoneOptions = DEFAULT_HALFTONE_OPTIONS,
+	cleanLabel = false,
 ): Promise<HTMLCanvasElement> {
 	return new Promise((resolve, reject) => {
 		const img = new Image();
 		img.crossOrigin = "anonymous";
 		img.onload = () => {
-			const n = 66;
+			const n = Math.max(12, Math.round(options.density));
 			const buf = document.createElement("canvas");
 			buf.width = buf.height = n;
 			const bctx = buf.getContext("2d", { willReadFrequently: true })!;
@@ -729,7 +795,11 @@ function halftoneBase(
 					const lum =
 						(0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) /
 						255;
-					const rad = (cell / 2) * Math.sqrt(1 - lum) * 1.28;
+					const contrasted = Math.max(
+						0,
+						Math.min(1, 0.5 + (lum - 0.5) * options.contrast),
+					);
+					const rad = (cell / 2) * Math.sqrt(1 - contrasted) * options.dotScale;
 					if (rad < 0.4) continue;
 					ctx.beginPath();
 					ctx.arc(
@@ -739,25 +809,184 @@ function halftoneBase(
 						0,
 						Math.PI * 2,
 					);
+					ctx.globalAlpha = Math.max(0, Math.min(1, options.inkOpacity));
 					ctx.fill();
 				}
 			}
+			ctx.globalAlpha = 1;
 			ring(ctx, R_HUB, R_CLAMP, "#c9ccce");
 			ring(ctx, R_EDGE, R_OUT, "#c9ccce");
-			// title near the hub, haloed in the album colour so it reads over the dots
+			const inkColor = readable(album.color);
 			ctx.textAlign = "center";
 			ctx.textBaseline = "middle";
-			fittedText(ctx, album.title.toLowerCase(), R_OUT * 1.1, 40, 24);
+			ctx.fillStyle = inkColor;
+			if (cleanLabel) {
+				// The clean label contributes one precise accent ring and a quiet type
+				// lockup; the halftone stays the image-making layer underneath it.
+				strokeRing(ctx, R_EDGE - 14, mostVibrant(palette) ?? album.color, 4);
+				fittedText(ctx, album.title.toLowerCase(), R_OUT * 1.18, 38, 24);
+				ctx.letterSpacing = "6px";
+				ctx.fillText(
+					album.title.toLowerCase(),
+					C,
+					C - R_CLAMP - 44,
+					R_OUT * 1.2,
+				);
+				ctx.letterSpacing = "0px";
+				const sub = [album.artist, album.year]
+					.filter(Boolean)
+					.join(" · ")
+					.toLowerCase();
+				if (sub) {
+					ctx.globalAlpha = 0.7;
+					ctx.font = `400 24px 'Commit Mono', ui-monospace, monospace`;
+					ctx.fillText(sub, C, C + R_CLAMP + 38, R_OUT * 1.2);
+				}
+			} else {
+				// The original halftone lockup gets a small paper-colour halo so it
+				// remains readable over dense dots.
+				fittedText(ctx, album.title.toLowerCase(), R_OUT * 1.1, 40, 24);
+				ctx.lineJoin = "round";
+				ctx.strokeStyle = album.color;
+				ctx.lineWidth = 7;
+				ctx.strokeText(
+					album.title.toLowerCase(),
+					C,
+					C - R_CLAMP - 46,
+					R_OUT * 1.1,
+				);
+				ctx.fillText(
+					album.title.toLowerCase(),
+					C,
+					C - R_CLAMP - 46,
+					R_OUT * 1.1,
+				);
+				const sub = [album.artist, album.year]
+					.filter(Boolean)
+					.join(" · ")
+					.toLowerCase();
+				if (sub) {
+					ctx.font = `400 24px 'Commit Mono', ui-monospace, monospace`;
+					ctx.lineWidth = 6;
+					ctx.strokeText(sub, C, C + R_CLAMP + 42, R_OUT);
+					ctx.globalAlpha = 0.85;
+					ctx.fillText(sub, C, C + R_CLAMP + 42, R_OUT);
+				}
+			}
+			ctx.globalAlpha = 1;
+			resolve(el);
+		};
+		img.onerror = reject;
+		img.src = album.cover;
+	});
+}
+
+/**
+ * The cover transcoded to a glyph field, matching the home hero's quality: it
+ * reuses the hero's coverage-equalized glyph atlas (so midtones read as
+ * perceptually-linear tone, not a crushed ramp) and colours every glyph from the
+ * album's own pixels over a dim wash of the cover — no green, the record's own
+ * palette. A gamma/contrast curve plus an ordered dither keep gradients smooth.
+ */
+// 4×4 Bayer threshold matrix, values 0..15 — breaks tone banding
+const BAYER_4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const ASCII_GAMMA = 0.9;
+const ASCII_CONTRAST = 1.15;
+
+// The perceptually-linear glyph ramp (sparse→dense) is built once from the hero
+// atlas and reused for every album; the atlas handles font loading + coverage.
+let asciiRampPromise: Promise<string> | null = null;
+function asciiRamp(): Promise<string> {
+	if (!asciiRampPromise)
+		asciiRampPromise = buildGlyphAtlas().then((atlas) => atlas.charset);
+	return asciiRampPromise;
+}
+
+async function asciiBase(
+	album: CdAlbum,
+	palette: string[],
+): Promise<HTMLCanvasElement> {
+	const ramp = await asciiRamp(); // sparse → dense, perceptually linear
+	const last = ramp.length - 1;
+	return new Promise((resolve, reject) => {
+		const img = new Image();
+		img.crossOrigin = "anonymous";
+		img.onload = () => {
+			const n = 92; // glyph cells across the cover — dense, hero-like
+			const buf = document.createElement("canvas");
+			buf.width = buf.height = n;
+			const bctx = buf.getContext("2d", { willReadFrequently: true })!;
+			const s = Math.max(n / img.width, n / img.height);
+			const w = img.width * s,
+				h = img.height * s;
+			bctx.drawImage(img, n / 2 - w / 2, n / 2 - h / 2, w, h);
+			const data = bctx.getImageData(0, 0, n, n).data;
+
+			const el = canvas();
+			const ctx = el.getContext("2d")!;
+			clipDisc(ctx);
+			// paper: near-black, faintly warmed by the album colour
+			const [ar, ag, ab] = hexRgb(album.color);
+			ctx.fillStyle = rgbHex(ar * 0.12 + 7, ag * 0.12 + 8, ab * 0.12 + 7);
+			ctx.fillRect(0, 0, SIZE, SIZE);
+			// colour floor: a dim wash of the actual cover, so the glyphs sit in the
+			// album's real palette the way the hero glyphs sit in the photo
+			ctx.save();
+			ctx.globalAlpha = 0.22;
+			const cs = Math.max(SIZE / img.width, SIZE / img.height);
+			const cw = img.width * cs,
+				chh = img.height * cs;
+			ctx.drawImage(img, C - cw / 2, C - chh / 2, cw, chh);
+			ctx.restore();
+
+			const cell = SIZE / n;
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.font = `${Math.round(cell * 1.15)}px 'Commit Mono', ui-monospace, monospace`;
+			for (let y = 0; y < n; y++) {
+				for (let x = 0; x < n; x++) {
+					const i = (y * n + x) * 4;
+					const r = data[i],
+						g = data[i + 1],
+						b = data[i + 2];
+					let lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+					lum = Math.pow(lum, ASCII_GAMMA);
+					lum = 0.5 + (lum - 0.5) * ASCII_CONTRAST;
+					const th = (BAYER_4[(y % 4) * 4 + (x % 4)] + 0.5) / 16 - 0.5;
+					const l = Math.max(0, Math.min(1, lum + th / last));
+					const ch = ramp[Math.round(l * last)];
+					if (ch === " ") continue;
+					// tint the glyph with the album's own colour at this cell, lifted so
+					// even dark-but-saturated regions keep a legible, coloured glyph
+					const boost = 0.6 + 0.6 * l;
+					ctx.fillStyle = rgbHex(
+						r * boost + 70,
+						g * boost + 72,
+						b * boost + 66,
+					);
+					ctx.fillText(ch, x * cell + cell / 2, y * cell + cell / 2);
+				}
+			}
+			// CD anatomy, kept dark so the glyph field stays the subject
+			const rim = rgbHex(ar * 0.16 + 10, ag * 0.16 + 11, ab * 0.16 + 10);
+			ring(ctx, R_HUB, R_CLAMP, rim);
+			ring(ctx, R_EDGE, R_OUT, rim);
+			const accent = mostVibrant(palette) ?? album.color;
+			strokeRing(ctx, R_EDGE - 6, accent, 2);
+			// metadata, haloed in the paper colour so it stays legible over the glyphs
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
 			ctx.lineJoin = "round";
-			ctx.strokeStyle = album.color;
-			ctx.lineWidth = 7;
+			ctx.strokeStyle = rgbHex(ar * 0.12 + 7, ag * 0.12 + 8, ab * 0.12 + 7);
+			fittedText(ctx, album.title.toLowerCase(), R_OUT * 1.1, 40, 24);
+			ctx.lineWidth = 9;
 			ctx.strokeText(
 				album.title.toLowerCase(),
 				C,
 				C - R_CLAMP - 46,
 				R_OUT * 1.1,
 			);
-			ctx.fillStyle = readable(album.color);
+			ctx.fillStyle = "#eef2ee";
 			ctx.fillText(album.title.toLowerCase(), C, C - R_CLAMP - 46, R_OUT * 1.1);
 			const sub = [album.artist, album.year]
 				.filter(Boolean)
@@ -765,12 +994,114 @@ function halftoneBase(
 				.toLowerCase();
 			if (sub) {
 				ctx.font = `400 24px 'Commit Mono', ui-monospace, monospace`;
-				ctx.lineWidth = 6;
+				ctx.lineWidth = 7;
 				ctx.strokeText(sub, C, C + R_CLAMP + 42, R_OUT);
-				ctx.globalAlpha = 0.85;
+				ctx.fillStyle = accent;
 				ctx.fillText(sub, C, C + R_CLAMP + 42, R_OUT);
-				ctx.globalAlpha = 1;
 			}
+			resolve(el);
+		};
+		img.onerror = reject;
+		img.src = album.cover;
+	});
+}
+
+const BAYER_8 = [
+	0, 48, 12, 60,  3, 51, 15, 63,
+	32, 16, 44, 28, 35, 19, 47, 31,
+	8, 56,  4, 52, 11, 59,  7, 55,
+	40, 24, 36, 20, 43, 27, 39, 23,
+	2, 50, 14, 62,  1, 49, 13, 61,
+	34, 18, 46, 30, 33, 17, 45, 29,
+	10, 58,  6, 54,  9, 57,  5, 53,
+	42, 26, 38, 22, 41, 25, 37, 21
+];
+
+async function ditherBase(
+	album: CdAlbum,
+	palette: string[],
+	options: DitherDiscOptions = DEFAULT_DITHER_DISC_OPTIONS,
+): Promise<HTMLCanvasElement> {
+	return new Promise((resolve, reject) => {
+		const img = new Image();
+		img.crossOrigin = "anonymous";
+		img.onload = () => {
+			const n = options.density;
+			const buf = document.createElement("canvas");
+			buf.width = buf.height = n;
+			const bctx = buf.getContext("2d", { willReadFrequently: true })!;
+			const s = Math.max(n / img.width, n / img.height);
+			const w = img.width * s,
+				h = img.height * s;
+			bctx.drawImage(img, n / 2 - w / 2, n / 2 - h / 2, w, h);
+			const pixels = bctx.getImageData(0, 0, n, n).data;
+
+			const el = canvas();
+			const ctx = el.getContext("2d")!;
+			clipDisc(ctx);
+
+			// Determine light and dark colors
+			let lightColor: [number, number, number] = [255, 255, 255];
+			let darkColor: [number, number, number] = [0, 0, 0];
+
+			const [ar, ag, ab] = hexRgb(album.color);
+
+			if (options.colorMode === "bw") {
+				lightColor = [245, 245, 245];
+				darkColor = [10, 10, 10];
+			} else if (options.colorMode === "album") {
+				const ink = mostVibrant(palette) ?? album.color;
+				lightColor = hexRgb(ink);
+				darkColor = [
+					Math.round(ar * 0.08),
+					Math.round(ag * 0.08),
+					Math.round(ab * 0.08)
+				];
+			} else if (options.colorMode === "green") {
+				lightColor = [139, 172, 15]; // GameBoy light green
+				darkColor = [15, 30, 18]; // GameBoy dark green
+			} else if (options.colorMode === "amber") {
+				lightColor = [255, 176, 0]; // Amber phosphor
+				darkColor = [21, 10, 0]; // Dark amber
+			}
+
+			// Fill background
+			ctx.fillStyle = rgbHex(darkColor[0], darkColor[1], darkColor[2]);
+			ctx.fillRect(0, 0, SIZE, SIZE);
+
+			const cell = SIZE / n;
+			for (let y = 0; y < n; y++) {
+				for (let x = 0; x < n; x++) {
+					const i = (y * n + x) * 4;
+					const r = pixels[i];
+					const g = pixels[i + 1];
+					const b = pixels[i + 2];
+					const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+					
+					// Apply contrast around 0.5 midpoint
+					const adjusted = (lum - 0.5) * options.contrast + 0.5;
+					
+					// Get 8x8 Bayer threshold value mapped to 0..1
+					const th = (BAYER_8[(y % 8) * 8 + (x % 8)] + 0.5) / 64;
+					
+					if (adjusted > th) {
+						ctx.fillStyle = rgbHex(lightColor[0], lightColor[1], lightColor[2]);
+						ctx.fillRect(
+							Math.round(x * cell),
+							Math.round(y * cell),
+							Math.ceil(cell),
+							Math.ceil(cell),
+						);
+					}
+				}
+			}
+
+			// CD anatomy
+			clearRing(ctx, R_HUB, R_CLAMP);
+			clearRing(ctx, R_EDGE, R_OUT);
+			const accent = mostVibrant(palette) ?? album.color;
+			strokeRing(ctx, R_EDGE - 6, accent, 2);
+
 			resolve(el);
 		};
 		img.onerror = reject;
@@ -920,7 +1251,15 @@ function indexBase(album: CdAlbum, palette: string[]): HTMLCanvasElement {
  * muted covers lean typographic/realistic. A stable hash of the album id picks
  * within the biased pool, so every album gets a distinct-but-fixed face.
  */
-const VIBRANT_POOL: DiscStyle[] = ["halftone", "duotone", "marquee", "geo"];
+const VIBRANT_POOL: DiscStyle[] = [
+	"halftone",
+	"halftone-clean",
+	"duotone",
+	"marquee",
+	"geo",
+	"ascii",
+	"dither",
+];
 const MUTED_POOL: DiscStyle[] = ["pressed", "index", "clean", "catalog"];
 
 /**
@@ -945,6 +1284,8 @@ const EMPTY: DiscMaps = {
 export async function createDiscMaps(
 	style: DiscStyle,
 	album: CdAlbum,
+	options: HalftoneOptions = DEFAULT_HALFTONE_OPTIONS,
+	ditherOptions: DitherDiscOptions = DEFAULT_DITHER_DISC_OPTIONS,
 ): Promise<DiscMaps> {
 	if (style === "mirror") return EMPTY;
 	// mirror already returned above; every remaining style derives an accent
@@ -977,7 +1318,10 @@ export async function createDiscMaps(
 			base = pressedBase(album, palette);
 			break;
 		case "halftone":
-			base = await halftoneBase(album, palette);
+			base = await halftoneBase(album, palette, options);
+			break;
+		case "halftone-clean":
+			base = await halftoneBase(album, palette, options, true);
 			break;
 		case "geo":
 			base = geoBase(album, palette);
@@ -987,6 +1331,12 @@ export async function createDiscMaps(
 			break;
 		case "index":
 			base = indexBase(album, palette);
+			break;
+		case "ascii":
+			base = await asciiBase(album, palette);
+			break;
+		case "dither":
+			base = await ditherBase(album, palette, ditherOptions);
 			break;
 		default:
 			base = labelBase(album);

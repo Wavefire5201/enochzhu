@@ -8,6 +8,7 @@
 		BufferGeometry,
 		CanvasTexture,
 		CircleGeometry,
+		RingGeometry,
 		Color,
 		DoubleSide,
 		Mesh,
@@ -36,11 +37,16 @@
 	import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 	import type { CdAlbum } from "./albums";
 	import CdCase from "./CdCase.svelte";
+	import type { PreviewPlayer } from "./preview-player.svelte";
 	import {
 		createDiscMaps,
+		DEFAULT_HALFTONE_OPTIONS,
 		type DiscMaps,
 		type DiscStyle,
+		type HalftoneOptions,
 		pickDiscStyle,
+		type DitherDiscOptions,
+		DEFAULT_DITHER_DISC_OPTIONS,
 	} from "./disc-art";
 	import { albumIndexAt, poolSize } from "./layout";
 	import {
@@ -72,15 +78,13 @@
 		/** where an opened case settles — negative x parks it left, clearing room */
 		presentX?: number;
 		presentY?: number;
-		/** open-case pointer parallax, supplied by the single-case proto */
-		openLookX?: number;
-		openLookY?: number;
 		preview?: boolean;
 		/** use the proto's perspective viewing geometry while retaining the wall pool */
 		perspectiveWall?: boolean;
 		caseModel?: JewelCaseModel;
 		/** proto disc-face exploration: what to print on the CD */
 		discStyle?: DiscStyle;
+		halftoneOptions?: HalftoneOptions;
 		hdriPath?: string | null;
 		/** independent yaw offset before inspection rotates model + room together */
 		hdriRotation?: number;
@@ -133,8 +137,6 @@
 		discThicknessHi?: number;
 		/** how far the disc lifts toward the viewer as a case opens (world units) */
 		discLift?: number;
-		/** projected opened-disc screen centre + radius, for the HTML dial overlay */
-		ondiscanchor?: (x: number, y: number, radius: number) => void;
 		glassRoughness?: number;
 		glassTransmission?: number;
 		glassClearcoat?: number;
@@ -152,6 +154,8 @@
 		bloomStrength?: number;
 		bloomRadius?: number;
 		bloomThreshold?: number;
+		ditherOptions?: DitherDiscOptions;
+		player?: PreviewPlayer;
 	}
 
 	const {
@@ -174,12 +178,11 @@
 		presentScale = 0.35,
 		presentX = 0,
 		presentY = 0,
-		openLookX = 0,
-		openLookY = 0,
 		preview = false,
 		perspectiveWall = false,
 		caseModel = DEFAULT_CD_CASE_SCENE.caseModel,
 		discStyle = "mirror",
+		halftoneOptions = DEFAULT_HALFTONE_OPTIONS,
 		hdriPath = DEFAULT_CD_CASE_SCENE.hdriPath,
 		hdriRotation = DEFAULT_CD_CASE_SCENE.hdriRotation,
 		backgroundIntensity = DEFAULT_CD_CASE_SCENE.backgroundIntensity,
@@ -211,7 +214,6 @@
 		discThicknessLo = 320,
 		discThicknessHi = 720,
 		discLift = 0.06,
-		ondiscanchor,
 		glassRoughness = DEFAULT_CD_CASE_SCENE.glassRoughness,
 		glassTransmission = DEFAULT_CD_CASE_SCENE.glassTransmission,
 		glassClearcoat = DEFAULT_CD_CASE_SCENE.glassClearcoat,
@@ -222,6 +224,8 @@
 		bloomStrength = DEFAULT_CD_CASE_SCENE.bloomStrength,
 		bloomRadius = DEFAULT_CD_CASE_SCENE.bloomRadius,
 		bloomThreshold = DEFAULT_CD_CASE_SCENE.bloomThreshold,
+		ditherOptions = DEFAULT_DITHER_DISC_OPTIONS,
+		player,
 	}: Props = $props();
 
 	// closest hit only: a case is several stacked meshes and unfiltered
@@ -346,7 +350,7 @@
 		CASE_BEVEL,
 	);
 	const fallbackLid = new PlaneGeometry(CASE_W * 0.97, CASE_H * 0.97);
-	const fallbackDisc = new CircleGeometry(CASE_W * 0.42, 64);
+	const fallbackDisc = new RingGeometry((CASE_W * 0.42) * 0.12, CASE_W * 0.42, 64);
 	// the fallback booklet is SQUARE — album art must never stretch
 	const ART = Math.min(CASE_W, CASE_H) * 0.92;
 	const fallbackArt = new PlaneGeometry(ART, ART);
@@ -518,7 +522,7 @@
 			: null,
 	);
 	const activeStyle = $derived<DiscStyle>(
-		preview ? discStyle : openedAlbum ? pickDiscStyle(openedAlbum) : "mirror",
+		preview ? discStyle : openedAlbum ? "dither" : "mirror",
 	);
 	// Reduced motion: the case still opens and music still fades, but the disc
 	// holds still and flat — no spin, no lift.
@@ -585,20 +589,16 @@
 		// matte label with shiny clamp/edge rings; the map textures are applied in
 		// the async effect below, these are the scalar counterparts. mirror = the
 		// original bare disc.
-		const styled = activeStyle !== "mirror";
-		discMaterial.roughness = styled ? 0.55 : discRoughness;
-		discMaterial.metalness = styled ? 1 : 0.9;
-		// bare mirror disc gets the tunable rainbow; a printed label keeps only a
-		// faint sheen so the print still reads
-		discMaterial.iridescence = styled ? 0.25 : discIridescence;
+		// Set the CD material properties to be identical to the bare iridescent CD face (mirror)
+		discMaterial.roughness = discRoughness;
+		discMaterial.metalness = 0.9;
+		discMaterial.iridescence = discIridescence;
 		discMaterial.iridescenceThicknessRange = [discThicknessLo, discThicknessHi];
-		discMaterial.color.set(styled ? "#ffffff" : "#e2e2de");
-		discMaterial.emissive.set(styled ? "#4a4a4a" : "#000000");
-		discMaterial.emissiveIntensity = styled ? 0.32 : 0;
-		// The raw 4K equirectangular source is intentionally used for the bare
-		// mirror's sharp diamonds. A printed label instead uses the scene PMREM,
-		// otherwise that raw room overwhelms its ink and turns the label silver.
-		discMaterial.envMap = styled ? null : hdriSource;
+		discMaterial.color.set("#e2e2de");
+		discMaterial.emissive.set("#000000");
+		discMaterial.emissiveIntensity = 0;
+		// The raw 4K equirectangular source is used for the shiny CD face reflections
+		discMaterial.envMap = hdriSource;
 		const charcoal = caseModel === "charcoal";
 		// Preserve each folder's tray MTL profile. Both variants deliberately use
 		// the same clean glass below—there is no fingerprint roughness texture.
@@ -611,11 +611,8 @@
 		lidMaterial.clearcoatRoughness = glassClearcoatRoughness;
 		lidMaterial.envMapIntensity = glassReflectivity;
 		caseMaterial.envMapIntensity = environmentIntensity;
-		// Printed labels need to read as ink, not as broad mirror. Their metallic
-		// clamp and edge still catch the room through the material maps.
-		discMaterial.envMapIntensity = styled
-			? environmentIntensity * 0.28
-			: environmentIntensity * 1.5;
+		
+		discMaterial.envMapIntensity = environmentIntensity * 1.5;
 		scene.environmentIntensity = environmentIntensity;
 		// Glass and disc both read scene.environment (the PMREM'd HDRI) — the exact
 		// path the proto is tuned on, so the wall matches it.
@@ -650,6 +647,14 @@
 	// or (on the live wall) the album of the currently-open case. Only the opened
 	// disc is ever visible, so one shared material is enough. "art"/"halftone"
 	// load the cover, so this is async; the scalar props live in the effect above.
+	const discMapsCache = new Map<string, DiscMaps>();
+	onDestroy(() => {
+		for (const maps of discMapsCache.values()) {
+			maps.dispose();
+		}
+		discMapsCache.clear();
+	});
+
 	let discMaps: DiscMaps | null = null;
 	function clearDiscMaps() {
 		discMaterial.map = null;
@@ -659,29 +664,57 @@
 		discMaterial.needsUpdate = true;
 		discPrintMaterial.map = null;
 		discPrintMaterial.needsUpdate = true;
-		discMaps?.dispose();
 		discMaps = null;
 	}
 	$effect(() => {
 		const style = activeStyle;
 		const album = preview ? albums[0] : openedAlbum;
+		// Read each tuner field inside the effect. The face builder is async, so
+		// passing the options object alone would only track its identity and a
+		// slider move would not necessarily rebuild the canvas texture.
+		const options: HalftoneOptions = {
+			density: halftoneOptions.density,
+			dotScale: halftoneOptions.dotScale,
+			contrast: halftoneOptions.contrast,
+			inkOpacity: halftoneOptions.inkOpacity,
+		};
+		const ditherOpts: DitherDiscOptions = {
+			density: preview ? ditherOptions.density : 256,
+			colorMode: preview ? ditherOptions.colorMode : "bw",
+			contrast: preview ? ditherOptions.contrast : ditherOptions.contrast,
+		};
 		if (style === "mirror" || !album) {
 			clearDiscMaps();
 			return;
 		}
 		let cancelled = false;
-		createDiscMaps(style, album)
+
+		const cacheKey = `${style}_${album.id}_${ditherOpts.density}_${ditherOpts.colorMode}`;
+		if (discMapsCache.has(cacheKey)) {
+			const maps = discMapsCache.get(cacheKey)!;
+			discMaps = maps;
+			discMaterial.map = null;
+			discMaterial.emissiveMap = null;
+			discMaterial.metalnessMap = null;
+			discMaterial.roughnessMap = null;
+			discMaterial.needsUpdate = true;
+			discPrintMaterial.map = maps.map;
+			discPrintMaterial.needsUpdate = true;
+			return;
+		}
+
+		createDiscMaps(style, album, options, ditherOpts)
 			.then((maps) => {
 				if (cancelled) {
 					maps.dispose();
 					return;
 				}
-				discMaps?.dispose();
+				discMapsCache.set(cacheKey, maps);
 				discMaps = maps;
-				discMaterial.map = maps.map;
-				discMaterial.emissiveMap = maps.map;
-				discMaterial.metalnessMap = maps.metalnessMap;
-				discMaterial.roughnessMap = maps.roughnessMap;
+				discMaterial.map = null;
+				discMaterial.emissiveMap = null;
+				discMaterial.metalnessMap = null;
+				discMaterial.roughnessMap = null;
 				discMaterial.needsUpdate = true;
 				discPrintMaterial.map = maps.map;
 				discPrintMaterial.needsUpdate = true;
@@ -690,6 +723,27 @@
 		return () => {
 			cancelled = true;
 		};
+	});
+
+	$effect(() => {
+		// Pre-warm dither maps cache for all albums
+		if (preview) return;
+		for (const album of albums) {
+			const cacheKey = `dither_${album.id}_256_bw`;
+			if (!discMapsCache.has(cacheKey)) {
+				createDiscMaps("dither", album, halftoneOptions, {
+					density: 256,
+					colorMode: "bw",
+					contrast: ditherOptions.contrast ?? 1.0,
+				}).then((maps) => {
+					if (!discMapsCache.has(cacheKey)) {
+						discMapsCache.set(cacheKey, maps);
+					} else {
+						maps.dispose();
+					}
+				}).catch(() => {});
+			}
+		}
 	});
 
 	// Lightbox environment: a black studio with softbox strips, built in code
@@ -1182,11 +1236,8 @@
 			{presentScale}
 			{presentX}
 			{presentY}
-			{openLookX}
-			{openLookY}
 			discSpin={effectiveSpin}
 			discLift={effectiveLift}
-			{ondiscanchor}
 			caseWidth={CASE_W}
 			{caseDepth}
 			discX={hub.x}
@@ -1198,6 +1249,9 @@
 			{onopen}
 			{onhover}
 			onrotation={preview ? syncEnvironmentRotation : undefined}
+			discStyle={activeStyle}
+			{ditherOptions}
+			{player}
 		/>
 	{/each}
 </T.Group>
