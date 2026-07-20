@@ -100,14 +100,21 @@
 		const probe = document.createElement("canvas");
 		if (!probe.getContext("webgl2")) return;
 
-		// Touch-first devices have no hover moment to wake the shader, so start
-		// them automatically. Pointer-first devices retain the interaction gate.
+		// Keep the mobile startup path static. Starting the continuous WebGL render
+		// loop immediately blocks the main thread on slower phones, even though the
+		// poster already provides the complete hero. Touch/keyboard input still
+		// wakes the shader; pointer-first devices also retain the delayed warm-up.
 		// No 'scroll': hydration scroll-restoration fires it without user intent.
-		const events = ["pointermove", "wheel", "touchstart", "keydown"] as const;
 		const mobileFirst =
 			window.matchMedia("(max-width: 639px)").matches ||
 			window.matchMedia("(pointer: coarse)").matches ||
 			navigator.maxTouchPoints > 0;
+		// Browser/device emulation can synthesize pointer movement while a mobile
+		// page loads. Require a press on touch-first devices so the shader only
+		// starts after genuine user intent.
+		const events = mobileFirst
+			? (["pointerdown", "touchstart", "keydown"] as const)
+			: (["pointermove", "wheel", "keydown"] as const);
 		let started = false;
 
 		const start = async () => {
@@ -121,9 +128,9 @@
 			}
 		};
 
-		const idleTimer = setTimeout(start, mobileFirst ? 0 : 6000);
+		const idleTimer = mobileFirst ? undefined : setTimeout(start, 6000);
 		const cleanup = () => {
-			clearTimeout(idleTimer);
+			if (idleTimer) clearTimeout(idleTimer);
 			for (const name of events) window.removeEventListener(name, start);
 		};
 

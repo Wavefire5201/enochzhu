@@ -9,6 +9,10 @@ export default defineConfig({
 		tailwindcss(),
 		sveltekit({
 			extensions: [".svelte", ".md"],
+			// Collapse the route's tiny component styles into one inline block. On a
+			// throttled mobile connection, six sub-4 kB stylesheets cost far more in
+			// request latency than they save through independent caching.
+			inlineStyleThreshold: 4096,
 			preprocess: [mdsvex({ extensions: [".md"] })],
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
@@ -26,21 +30,4 @@ export default defineConfig({
 			adapter: adapter({ fallback: "404.html" }),
 		}),
 	],
-	build: {
-		rollupOptions: {
-			output: {
-				// Quarantine the heavy WebGL stack into its own chunk so it is never
-				// downloaded on page load — only pulled in when CdWall mounts.
-				manualChunks(id) {
-					if (
-						id.includes("/three/") ||
-						id.includes("/@threlte/core/") ||
-						id.includes("/@threlte/extras/")
-					) {
-						return "three";
-					}
-				},
-			},
-		},
-	},
 });
