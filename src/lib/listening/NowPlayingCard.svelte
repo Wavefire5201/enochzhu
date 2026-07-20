@@ -23,7 +23,7 @@
 				loading="lazy"
 				width="56"
 				height="56"
-				class="size-14 shrink-0 rounded-xs object-cover"
+				class="size-14 shrink-0 rounded-xs object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
 			/>
 		{/if}
 		<div class="min-w-0">

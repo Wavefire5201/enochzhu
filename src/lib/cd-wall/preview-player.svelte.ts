@@ -33,6 +33,8 @@ export class PreviewPlayer {
 	/** target playback level (0..1); the live fade rides toward it */
 	volume = $state(0.2);
 	inspecting = $state(false);
+	/** open animation progress (0..1) of the currently active case */
+	openAmount = $state(0);
 
 	#audio: HTMLAudioElement | null = null;
 	#fade: number | null = null;

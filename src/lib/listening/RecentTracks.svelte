@@ -39,7 +39,7 @@
 							loading="lazy"
 							width="32"
 							height="32"
-							class="size-8 shrink-0 rounded-xs object-cover"
+							class="size-8 shrink-0 rounded-xs object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
 						/>
 					{/if}
 					<a

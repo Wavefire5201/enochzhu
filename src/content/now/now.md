@@ -22,4 +22,4 @@ recently-played list appear below this prose automatically.
 
 ## currently learning
 
-- to play *arabesque no. 1* by claude debussy
+- to play _arabesque no. 1_ by claude debussy

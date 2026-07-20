@@ -139,6 +139,16 @@
 			Number((event.currentTarget as HTMLInputElement).value) / 100,
 		);
 	}
+
+	let lastOpenedSlot = $state<number | null>(null);
+	$effect(() => {
+		if (openedSlot !== null) {
+			lastOpenedSlot = openedSlot;
+		}
+	});
+	const activeSlot = $derived(
+		openedSlot !== null ? openedSlot : lastOpenedSlot,
+	);
 </script>
 
 <!-- decorative: the accessible album list lives in CdWall -->
@@ -192,47 +202,72 @@
 	<!-- the payoff: an opened case squares up center-stage while the row parts
 	     around it, and its details arrive in the space cleared to its right.
 	     Sits OUTSIDE the mask so the type stays crisp over the bright glass. -->
-	{#if openedSlot !== null}
-		{@const focused = albums[albumIndexAt(openedSlot, albums.length)]}
-		
-		<!-- Center bottom listening link, placed below the 3D CD case and the sliding bottom artist text -->
-		{#if focused.link}
-			<div
-				class="pointer-events-none absolute inset-x-0 bottom-6 sm:bottom-10 z-10 flex justify-center transition-opacity duration-300 {player.inspecting ? 'opacity-0' : 'opacity-100'}"
-			>
-				<a
-					class="pointer-events-auto link-trace font-display text-base text-muted hover:text-ember transition-all"
-					href={focused.link}
-					target="_blank"
-					rel="noopener noreferrer"
-				>
-					listen full album ↗
-				</a>
-			</div>
-		{/if}
+	{#if activeSlot !== null && (openedSlot !== null || player.openAmount > 0.001)}
+		{@const focused = albums[albumIndexAt(activeSlot, albums.length)]}
 
 		<!-- HUD overlay containing both flat vertical control strip and notes.
 		     On mobile, it centers at the bottom (below the case).
 		     On desktop, it floats on the right of the CD case. -->
 		<div
-			class="pointer-events-none absolute z-10 flex items-center gap-6 transition-all duration-300
-			       inset-x-0 bottom-20 justify-center pl-0
-			       sm:inset-y-0 sm:bottom-0 sm:left-1/2 sm:right-auto sm:justify-start sm:pl-[12.5rem] md:pl-[14.5rem] lg:pl-[16.5rem]
-			       {player.inspecting ? 'opacity-0 pointer-events-none' : 'opacity-100'}"
-			style="text-shadow: 0 1px 14px var(--color-bg), 0 0 36px var(--color-bg)"
+			class="pointer-events-none absolute z-10 flex flex-row items-center gap-6
+			       inset-x-0 bottom-0 justify-center pl-0
+			       sm:inset-y-0 sm:bottom-0 sm:left-1/2 sm:right-auto sm:justify-start sm:pl-[12.5rem] md:pl-[14.5rem] lg:pl-[16.5rem]"
+			style="text-shadow: 0 1px 14px var(--color-bg), 0 0 36px var(--color-bg); opacity: {player.openAmount *
+				(player.inspecting ? 0 : 1)}; transition: {player.openAmount > 0.001 &&
+			player.openAmount < 0.999
+				? 'none'
+				: 'opacity 300ms'}"
 		>
-			<!-- Flat Vertical Control Panel (monotone, no background, 100% native interaction) -->
-			{#if player.previewUrl || player.loading}
-				<div class="pointer-events-auto flex flex-col items-center gap-4 py-2 select-none">
-					<div class="slider-container relative flex h-24 w-4 items-center justify-center">
+			<!-- Control Panel Column (holds horizontal layout on mobile, vertical column on desktop) -->
+			<div
+				class="{player.openAmount > 0.9 && !player.inspecting
+					? 'pointer-events-auto'
+					: 'pointer-events-none'} flex flex-row sm:flex-col items-center gap-4 sm:gap-5 py-1.5 select-none"
+			>
+				<!-- Play/Pause Button (left on mobile, bottom/3rd on desktop) -->
+				{#if player.previewUrl || player.loading}
+					{#if player.loading}
+						<div
+							class="flex size-8 shrink-0 items-center justify-center rounded-full border border-muted/20 bg-bright/5 animate-pulse order-1 sm:order-3"
+						>
+							<div class="size-1.5 rounded-full bg-muted"></div>
+						</div>
+					{:else}
+						<button
+							type="button"
+							class="play-pause-flat-btn relative flex size-8 shrink-0 items-center justify-center text-muted hover:text-bright hover:scale-110 active:scale-[0.96] transition-[color,transform] duration-150 ease-out cursor-pointer after:absolute after:inset-[-6px] order-1 sm:order-3"
+							onclick={() => player.toggle()}
+							aria-label={player.playing ? "Pause preview" : "Play preview"}
+						>
+							{#if player.playing}
+								<!-- Pause Icon -->
+								<svg class="size-5 fill-current" viewBox="0 0 24 24">
+									<rect x="5" y="4" width="4" height="16" />
+									<rect x="15" y="4" width="4" height="16" />
+								</svg>
+							{:else}
+								<!-- Play Icon -->
+								<svg class="size-5 fill-current ml-0.5" viewBox="0 0 24 24">
+									<path d="M8 5v14l11-7z" />
+								</svg>
+							{/if}
+						</button>
+					{/if}
+				{/if}
+
+				<!-- Volume Slider (middle on mobile, middle/2nd on desktop) -->
+				{#if player.previewUrl || player.loading}
+					<div
+						class="slider-container relative flex items-center justify-center order-2 sm:order-2"
+					>
 						<!-- Track line -->
-						<div class="absolute h-20 w-[1.5px] bg-muted/40">
+						<div class="track-line absolute bg-muted/40">
 							<div
-								class="absolute bottom-0 left-0 right-0 bg-bright"
-								style="height: {player.volume * 100}%"
+								class="track-fill absolute bg-bright"
+								style="--volume-percent: {player.volume * 100}%"
 							></div>
 						</div>
-						<!-- Native range input rotated -->
+						<!-- Native range input -->
 						<input
 							type="range"
 							min="0"
@@ -240,47 +275,34 @@
 							step="1"
 							value={Math.round(player.volume * 100)}
 							oninput={setVolume}
-							class="flat-vertical-slider"
+							class="flat-slider"
 							aria-label="Volume"
 						/>
 					</div>
+				{/if}
 
-					<!-- Divider line -->
-					<div class="w-4 h-[1px] bg-muted/30"></div>
-
-					<!-- Play/Pause Button -->
-					{#if player.loading}
-						<div class="flex size-8 items-center justify-center rounded-full border border-muted/20 bg-bright/5 animate-pulse">
-							<div class="size-1.5 rounded-full bg-muted"></div>
-						</div>
-					{:else}
-						<button
-							type="button"
-							class="play-pause-flat-btn flex size-8 items-center justify-center text-muted hover:text-bright hover:scale-110 transition-all cursor-pointer"
-							onclick={() => player.toggle()}
-							aria-label={player.playing ? "Pause preview" : "Play preview"}
-						>
-							{#if player.playing}
-								<!-- Pause Icon -->
-								<svg class="size-3.5 fill-current" viewBox="0 0 24 24">
-									<rect x="5" y="4" width="4" height="16" />
-									<rect x="15" y="4" width="4" height="16" />
-								</svg>
-							{:else}
-								<!-- Play Icon -->
-								<svg class="size-3.5 fill-current ml-0.5" viewBox="0 0 24 24">
-									<path d="M8 5v14l11-7z" />
-								</svg>
-							{/if}
-						</button>
-					{/if}
-				</div>
-			{/if}
+				<!-- Spotify Icon Link (right on mobile, top/1st on desktop) -->
+				{#if focused.link}
+					<a
+						class="text-muted hover:text-ember transition-[color,transform] duration-150 ease-out hover:scale-110 active:scale-[0.96] flex size-8 shrink-0 items-center justify-center cursor-pointer order-3 sm:order-1"
+						href={focused.link}
+						target="_blank"
+						rel="noopener noreferrer"
+						aria-label="Listen on Spotify"
+					>
+						<svg class="size-6 fill-current" viewBox="0 0 24 24">
+							<path
+								d="M12 2C6.477 2 2 6.484 2 12.017c0 5.537 4.477 10.019 10 10.019 5.522 0 10-4.482 10-10.019C22 6.484 17.522 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.377-1.454-5.37-1.783-8.893-1.002-.336.075-.668-.136-.744-.471-.074-.337.136-.668.471-.744 3.844-.877 7.14-.5 9.822 1.141.295.18.387.563.201.869zm1.222-2.724c-.226.367-.707.487-1.074.26-2.72-1.672-6.87-2.157-10.082-1.182-.413.125-.847-.107-.972-.52-.125-.413.107-.847.52-.972 3.676-1.116 8.243-.574 11.35 1.339.366.226.486.707.258 1.075zm.106-2.833C14.492 8.847 8.79 8.658 5.485 9.66c-.524.16-1.078-.14-1.237-.664-.16-.524.14-1.078.664-1.237 3.8-1.153 10.1-.93 13.94 1.353.47.28.625.83.346 1.352-.28.523-.832.678-1.353.398z"
+							/>
+						</svg>
+					</a>
+				{/if}
+			</div>
 
 			<!-- Notes -->
 			{#if focused.note}
 				<div class="flex w-[14rem] sm:w-[17rem] flex-col gap-3">
-					<p class="text-sm leading-relaxed text-muted">
+					<p class="text-sm leading-relaxed text-muted text-pretty">
 						{focused.note}
 					</p>
 				</div>
@@ -343,28 +365,75 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 1.25rem;
-		height: 5.5rem;
+		width: 5.5rem;
+		height: 2.75rem;
 	}
 
-	.flat-vertical-slider {
+	@media (min-width: 640px) {
+		.slider-container {
+			width: 1.25rem;
+			height: 5.5rem;
+		}
+	}
+
+	.track-line {
 		position: absolute;
-		width: 5.5rem; /* acts as height when rotated */
-		height: 1.25rem; /* acts as width when rotated */
+		background: color-mix(in srgb, var(--color-muted) 40%, transparent);
+		width: 5rem;
+		height: 1.5px;
+	}
+
+	@media (min-width: 640px) {
+		.track-line {
+			width: 1.5px;
+			height: 5rem;
+		}
+	}
+
+	.track-fill {
+		position: absolute;
+		background: var(--color-bright);
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: var(--volume-percent);
+	}
+
+	@media (min-width: 640px) {
+		.track-fill {
+			top: auto;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			width: auto;
+			height: var(--volume-percent);
+		}
+	}
+
+	.flat-slider {
+		position: absolute;
+		width: 5.5rem;
+		height: 2.75rem;
 		margin: 0;
 		cursor: pointer;
-		transform: rotate(-90deg);
 		appearance: none;
 		-webkit-appearance: none;
 		background: transparent;
 		outline: none;
 	}
 
-	.flat-vertical-slider::-webkit-slider-runnable-track {
+	@media (min-width: 640px) {
+		.flat-slider {
+			transform: rotate(-90deg);
+			height: 1.25rem;
+		}
+	}
+
+	.flat-slider::-webkit-slider-runnable-track {
 		background: transparent;
 	}
 
-	.flat-vertical-slider::-webkit-slider-thumb {
+	.flat-slider::-webkit-slider-thumb {
 		-webkit-appearance: none;
 		appearance: none;
 		width: 0.55rem;
@@ -372,24 +441,28 @@
 		border-radius: 50%;
 		background: var(--color-bright);
 		cursor: pointer;
-		transition: transform 120ms ease, background-color 120ms ease;
+		transition:
+			transform 120ms ease,
+			background-color 120ms ease;
 	}
 
-	.flat-vertical-slider::-webkit-slider-thumb:hover {
+	.flat-slider::-webkit-slider-thumb:hover {
 		transform: scale(1.3);
 		background-color: var(--color-ember);
 	}
 
-	.flat-vertical-slider::-moz-range-thumb {
+	.flat-slider::-moz-range-thumb {
 		width: 0.55rem;
 		height: 0.55rem;
 		border-radius: 50%;
 		background: var(--color-bright);
 		cursor: pointer;
-		transition: transform 120ms ease, background-color 120ms ease;
+		transition:
+			transform 120ms ease,
+			background-color 120ms ease;
 	}
 
-	.flat-vertical-slider::-moz-range-thumb:hover {
+	.flat-slider::-moz-range-thumb:hover {
 		transform: scale(1.3);
 		background-color: var(--color-ember);
 	}

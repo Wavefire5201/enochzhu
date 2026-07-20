@@ -10,7 +10,7 @@ export interface DitherOptions {
 export function ditherImage(
 	img: HTMLImageElement,
 	albumColor: string,
-	options: DitherOptions
+	options: DitherOptions,
 ): HTMLCanvasElement {
 	const res = options.resolution;
 	const canvas = document.createElement("canvas");
@@ -34,7 +34,7 @@ export function ditherImage(
 		darkColor = [
 			Math.round(r * 0.08),
 			Math.round(g * 0.08),
-			Math.round(b * 0.08)
+			Math.round(b * 0.08),
 		];
 	} else if (options.colorMode === "green") {
 		lightColor = [139, 172, 15]; // GameBoy light green
@@ -46,14 +46,10 @@ export function ditherImage(
 
 	// 8x8 Bayer Threshold Matrix
 	const BAYER_8 = [
-		0, 48, 12, 60,  3, 51, 15, 63,
-		32, 16, 44, 28, 35, 19, 47, 31,
-		8, 56,  4, 52, 11, 59,  7, 55,
-		40, 24, 36, 20, 43, 27, 39, 23,
-		2, 50, 14, 62,  1, 49, 13, 61,
-		34, 18, 46, 30, 33, 17, 45, 29,
-		10, 58,  6, 54,  9, 57,  5, 53,
-		42, 26, 38, 22, 41, 25, 37, 21
+		0, 48, 12, 60, 3, 51, 15, 63, 32, 16, 44, 28, 35, 19, 47, 31, 8, 56, 4, 52,
+		11, 59, 7, 55, 40, 24, 36, 20, 43, 27, 39, 23, 2, 50, 14, 62, 1, 49, 13, 61,
+		34, 18, 46, 30, 33, 17, 45, 29, 10, 58, 6, 54, 9, 57, 5, 53, 42, 26, 38, 22,
+		41, 25, 37, 21,
 	];
 
 	for (let y = 0; y < res; y++) {
@@ -63,16 +59,16 @@ export function ditherImage(
 			const g = pixels[i + 1];
 			const b = pixels[i + 2];
 			const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-			
+
 			// Adjust contrast around 0.5 midpoint
 			const adjusted = (lum - 0.5) * options.contrast + 0.5;
-			
+
 			// Get Bayer threshold value mapped to 0..1
 			const th = (BAYER_8[(y % 8) * 8 + (x % 8)] + 0.5) / 64;
-			
+
 			const isLight = adjusted > th;
 			const [cr, cg, cb] = isLight ? lightColor : darkColor;
-			
+
 			pixels[i] = cr;
 			pixels[i + 1] = cg;
 			pixels[i + 2] = cb;
@@ -88,7 +84,7 @@ export function loadDitheredTexture(
 	src: string,
 	albumColor: string,
 	options: DitherOptions,
-	anisotropy: number
+	anisotropy: number,
 ): Promise<CanvasTexture> {
 	return new Promise((resolve, reject) => {
 		const img = new Image();

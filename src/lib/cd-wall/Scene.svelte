@@ -213,7 +213,7 @@
 		discIridescence = 1,
 		discThicknessLo = 320,
 		discThicknessHi = 720,
-		discLift = 0.06,
+		discLift = 0.015,
 		glassRoughness = DEFAULT_CD_CASE_SCENE.glassRoughness,
 		glassTransmission = DEFAULT_CD_CASE_SCENE.glassTransmission,
 		glassClearcoat = DEFAULT_CD_CASE_SCENE.glassClearcoat,
@@ -350,7 +350,11 @@
 		CASE_BEVEL,
 	);
 	const fallbackLid = new PlaneGeometry(CASE_W * 0.97, CASE_H * 0.97);
-	const fallbackDisc = new RingGeometry((CASE_W * 0.42) * 0.12, CASE_W * 0.42, 64);
+	const fallbackDisc = new RingGeometry(
+		CASE_W * 0.42 * 0.12,
+		CASE_W * 0.42,
+		64,
+	);
 	// the fallback booklet is SQUARE — album art must never stretch
 	const ART = Math.min(CASE_W, CASE_H) * 0.92;
 	const fallbackArt = new PlaneGeometry(ART, ART);
@@ -611,7 +615,7 @@
 		lidMaterial.clearcoatRoughness = glassClearcoatRoughness;
 		lidMaterial.envMapIntensity = glassReflectivity;
 		caseMaterial.envMapIntensity = environmentIntensity;
-		
+
 		discMaterial.envMapIntensity = environmentIntensity * 1.5;
 		scene.environmentIntensity = environmentIntensity;
 		// Glass and disc both read scene.environment (the PMREM'd HDRI) — the exact
@@ -735,13 +739,15 @@
 					density: 256,
 					colorMode: "bw",
 					contrast: ditherOptions.contrast ?? 1.0,
-				}).then((maps) => {
-					if (!discMapsCache.has(cacheKey)) {
-						discMapsCache.set(cacheKey, maps);
-					} else {
-						maps.dispose();
-					}
-				}).catch(() => {});
+				})
+					.then((maps) => {
+						if (!discMapsCache.has(cacheKey)) {
+							discMapsCache.set(cacheKey, maps);
+						} else {
+							maps.dispose();
+						}
+					})
+					.catch(() => {});
 			}
 		}
 	});

@@ -2,7 +2,11 @@
 	import { Canvas } from "@threlte/core";
 	import { WebGLRenderer } from "three";
 	import type { CdAlbum } from "./albums";
-	import type { DiscStyle, HalftoneOptions, DitherDiscOptions } from "./disc-art";
+	import type {
+		DiscStyle,
+		HalftoneOptions,
+		DitherDiscOptions,
+	} from "./disc-art";
 	import type { JewelCaseModel } from "./models";
 	import Scene from "./Scene.svelte";
 	import { WallScroll } from "./scroll";

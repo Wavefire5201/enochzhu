@@ -168,7 +168,7 @@
 						loading="lazy"
 						width="1024"
 						height="1024"
-						class="aspect-square w-full rounded-xs object-cover"
+						class="aspect-square w-full rounded-xs object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
 						style="background-color: {album.color}"
 					/>
 					<h3 class="mt-2 font-display text-sm text-bright">
@@ -189,7 +189,9 @@
 						{[album.artist, album.year].filter(Boolean).join(" · ")}
 					</p>
 					{#if album.note}
-						<p class="mt-1 text-xs leading-relaxed text-fg">{album.note}</p>
+						<p class="mt-1 text-xs leading-relaxed text-fg text-pretty">
+							{album.note}
+						</p>
 					{/if}
 				</li>
 			{/each}

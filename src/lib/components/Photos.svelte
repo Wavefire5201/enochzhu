@@ -21,7 +21,7 @@
 						alt={photo.meta.alt}
 						loading="lazy"
 						decoding="async"
-						class="w-full rounded-xs"
+						class="w-full rounded-xs outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
 					/>
 					{#if photo.meta.location || photo.meta.date}
 						<figcaption class="mt-1 font-mono text-xs text-muted">

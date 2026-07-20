@@ -135,8 +135,10 @@
 	let bottomMesh = $state<Mesh>();
 
 	// --- 3D sliding text for 1-bit dither ---
-	const tCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
-	const bCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
+	const tCanvas =
+		typeof document !== "undefined" ? document.createElement("canvas") : null;
+	const bCanvas =
+		typeof document !== "undefined" ? document.createElement("canvas") : null;
 	if (tCanvas) {
 		tCanvas.width = 1024;
 		tCanvas.height = 128;
@@ -149,7 +151,11 @@
 	const tTexture = tCanvas ? new CanvasTexture(tCanvas) : null;
 	const bTexture = bCanvas ? new CanvasTexture(bCanvas) : null;
 
-	function drawTextToCanvas(canvas: HTMLCanvasElement, text: string, color: string) {
+	function drawTextToCanvas(
+		canvas: HTMLCanvasElement,
+		text: string,
+		color: string,
+	) {
 		const ctx = canvas.getContext("2d")!;
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		ctx.fillStyle = color;
@@ -388,6 +394,20 @@
 			}
 		}
 
+		if (player) {
+			if (openedSlot !== null) {
+				if (slot === openedSlot) {
+					player.openAmount = lidAmount;
+				}
+			} else {
+				if (lidAmount > 0.001) {
+					player.openAmount = lidAmount;
+				} else if (player.openAmount > 0 && Math.abs(lidAmount) < 0.002) {
+					player.openAmount = 0;
+				}
+			}
+		}
+
 		// An equirectangular room is infinitely far away: translating a flat case
 		// sideways through it cannot change its reflection. Give resting slots a
 		// small, stable pose that evolves with the shared scroll offset instead.
@@ -583,10 +603,7 @@
 
 		{#if tTexture && bTexture}
 			<!-- Sliding Top Text (Album Title) -->
-			<T.Mesh
-				bind:ref={topMesh}
-				position.z={-0.015}
-			>
+			<T.Mesh bind:ref={topMesh} position.z={-0.015}>
 				<T.PlaneGeometry args={[1.2, 0.15]} />
 				<T.MeshBasicMaterial
 					map={tTexture}
@@ -598,10 +615,7 @@
 			</T.Mesh>
 
 			<!-- Sliding Bottom Text (Artist & Year) -->
-			<T.Mesh
-				bind:ref={bottomMesh}
-				position.z={-0.015}
-			>
+			<T.Mesh bind:ref={bottomMesh} position.z={-0.015}>
 				<T.PlaneGeometry args={[1.2, 0.15]} />
 				<T.MeshBasicMaterial
 					map={bTexture}
@@ -612,6 +626,5 @@
 				/>
 			</T.Mesh>
 		{/if}
-
 	</T.Group>
 </T.Group>

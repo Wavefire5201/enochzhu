@@ -1007,14 +1007,10 @@ async function asciiBase(
 }
 
 const BAYER_8 = [
-	0, 48, 12, 60,  3, 51, 15, 63,
-	32, 16, 44, 28, 35, 19, 47, 31,
-	8, 56,  4, 52, 11, 59,  7, 55,
-	40, 24, 36, 20, 43, 27, 39, 23,
-	2, 50, 14, 62,  1, 49, 13, 61,
-	34, 18, 46, 30, 33, 17, 45, 29,
-	10, 58,  6, 54,  9, 57,  5, 53,
-	42, 26, 38, 22, 41, 25, 37, 21
+	0, 48, 12, 60, 3, 51, 15, 63, 32, 16, 44, 28, 35, 19, 47, 31, 8, 56, 4, 52,
+	11, 59, 7, 55, 40, 24, 36, 20, 43, 27, 39, 23, 2, 50, 14, 62, 1, 49, 13, 61,
+	34, 18, 46, 30, 33, 17, 45, 29, 10, 58, 6, 54, 9, 57, 5, 53, 42, 26, 38, 22,
+	41, 25, 37, 21,
 ];
 
 async function ditherBase(
@@ -1055,7 +1051,7 @@ async function ditherBase(
 				darkColor = [
 					Math.round(ar * 0.08),
 					Math.round(ag * 0.08),
-					Math.round(ab * 0.08)
+					Math.round(ab * 0.08),
 				];
 			} else if (options.colorMode === "green") {
 				lightColor = [139, 172, 15]; // GameBoy light green
@@ -1077,13 +1073,13 @@ async function ditherBase(
 					const g = pixels[i + 1];
 					const b = pixels[i + 2];
 					const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-					
+
 					// Apply contrast around 0.5 midpoint
 					const adjusted = (lum - 0.5) * options.contrast + 0.5;
-					
+
 					// Get 8x8 Bayer threshold value mapped to 0..1
 					const th = (BAYER_8[(y % 8) * 8 + (x % 8)] + 0.5) / 64;
-					
+
 					if (adjusted > th) {
 						ctx.fillStyle = rgbHex(lightColor[0], lightColor[1], lightColor[2]);
 						ctx.fillRect(
