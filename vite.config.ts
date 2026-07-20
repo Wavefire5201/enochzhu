@@ -26,4 +26,21 @@ export default defineConfig({
 			adapter: adapter({ fallback: "404.html" }),
 		}),
 	],
+	build: {
+		rollupOptions: {
+			output: {
+				// Quarantine the heavy WebGL stack into its own chunk so it is never
+				// downloaded on page load — only pulled in when CdWall mounts.
+				manualChunks(id) {
+					if (
+						id.includes("/three/") ||
+						id.includes("/@threlte/core/") ||
+						id.includes("/@threlte/extras/")
+					) {
+						return "three";
+					}
+				},
+			},
+		},
+	},
 });

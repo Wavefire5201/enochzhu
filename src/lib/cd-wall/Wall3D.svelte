@@ -154,7 +154,7 @@
 <!-- decorative: the accessible album list lives in CdWall -->
 <div
 	bind:this={host}
-	class="relative h-[28rem] w-full select-none sm:h-[36rem] {grabbing
+	class="relative h-112 w-full select-none sm:h-144 {grabbing
 		? 'cursor-grabbing'
 		: hovered
 			? 'cursor-pointer'
@@ -225,38 +225,30 @@
 					: 'pointer-events-none'} flex flex-row sm:flex-col items-center gap-4 sm:gap-5 py-1.5 select-none"
 			>
 				<!-- Play/Pause Button (left on mobile, bottom/3rd on desktop) -->
-				{#if player.previewUrl || player.loading}
-					{#if player.loading}
-						<div
-							class="flex size-8 shrink-0 items-center justify-center rounded-full border border-muted/20 bg-bright/5 animate-pulse order-1 sm:order-3"
-						>
-							<div class="size-1.5 rounded-full bg-muted"></div>
-						</div>
-					{:else}
-						<button
-							type="button"
-							class="play-pause-flat-btn relative flex size-8 shrink-0 items-center justify-center text-muted hover:text-bright hover:scale-110 active:scale-[0.96] transition-[color,transform] duration-150 ease-out cursor-pointer after:absolute after:inset-[-6px] order-1 sm:order-3"
-							onclick={() => player.toggle()}
-							aria-label={player.playing ? "Pause preview" : "Play preview"}
-						>
-							{#if player.playing}
-								<!-- Pause Icon -->
-								<svg class="size-5 fill-current" viewBox="0 0 24 24">
-									<rect x="5" y="4" width="4" height="16" />
-									<rect x="15" y="4" width="4" height="16" />
-								</svg>
-							{:else}
-								<!-- Play Icon -->
-								<svg class="size-5 fill-current ml-0.5" viewBox="0 0 24 24">
-									<path d="M8 5v14l11-7z" />
-								</svg>
-							{/if}
-						</button>
-					{/if}
+				{#if player.previewUrl}
+					<button
+						type="button"
+						class="play-pause-flat-btn relative flex size-8 shrink-0 items-center justify-center text-muted hover:text-bright hover:scale-110 active:scale-[0.96] transition-[color,transform] duration-150 ease-out cursor-pointer after:absolute after:inset-[-6px] order-1 sm:order-3"
+						onclick={() => player.toggle()}
+						aria-label={player.playing ? "Pause preview" : "Play preview"}
+					>
+						{#if player.playing}
+							<!-- Pause Icon -->
+							<svg class="size-5 fill-current" viewBox="0 0 24 24">
+								<rect x="5" y="4" width="4" height="16" />
+								<rect x="15" y="4" width="4" height="16" />
+							</svg>
+						{:else}
+							<!-- Play Icon -->
+							<svg class="size-5 fill-current ml-0.5" viewBox="0 0 24 24">
+								<path d="M8 5v14l11-7z" />
+							</svg>
+						{/if}
+					</button>
 				{/if}
 
 				<!-- Volume Slider (middle on mobile, middle/2nd on desktop) -->
-				{#if player.previewUrl || player.loading}
+				{#if player.previewUrl}
 					<div
 						class="slider-container relative flex items-center justify-center order-2 sm:order-2"
 					>

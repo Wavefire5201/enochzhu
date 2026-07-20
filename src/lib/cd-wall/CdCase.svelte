@@ -206,6 +206,7 @@
 	let lidAmount = 0; // 0 = closed, 1 = fully open
 	let present = 0; // 0 = sits in the row, 1 = squared up and held to camera
 	let discSpinAngle = 0; // accumulates while a case is open — the disc spins up
+	let spinRate = 0; // 0..1 — lerped toward playing/paused for smooth spin-down
 	let lifeTime = 0; // keeps the surrounding wall quietly alive under focus lock
 
 	// hold-to-inspect: press and hold a case, then drag to turn it 360°
@@ -368,7 +369,12 @@
 		// Keyed to `lidAmount` (lid open), NOT `present`, so hand-turning the case
 		// (which eases `present` to 0) never freezes the disc — it keeps spinning
 		// as long as the lid is up, and coasts to a stop as the case closes.
-		discSpinAngle += delta * discSpin * lidAmount;
+		// spinRate lerps smoothly toward 1 (playing) or 0 (paused) so the disc
+		// winds down like a real turntable rather than snapping to a halt.
+		const audioPlaying = player ? player.playing : true;
+		const spinTarget = audioPlaying ? 1 : 0;
+		spinRate += (spinTarget - spinRate) * Math.min(1, delta * 1.8);
+		discSpinAngle += delta * discSpin * lidAmount * spinRate;
 		// the disc also rises out of the tray toward the viewer as it opens, so it
 		// reads as a lifted object, not a texture on a plane; eased by lidAmount.
 		const lift = discLift * lidAmount;

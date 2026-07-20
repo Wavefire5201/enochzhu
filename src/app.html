@@ -40,6 +40,9 @@
 		<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 		<link rel="manifest" href="/site.webmanifest" />
 		<meta name="theme-color" content="#0c110e" />
+		<!-- Early connection to the listening worker so the first fetch is faster. -->
+		<link rel="dns-prefetch" href="https://listening.enochzhu.com" />
+		<link rel="preconnect" href="https://listening.enochzhu.com" crossorigin />
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

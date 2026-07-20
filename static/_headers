@@ -7,3 +7,19 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
+
+# Hashed JS/CSS chunks from Vite — content-addressed, safe to cache forever.
+/_app/immutable/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Static 3D models — large GLBs that never change without a new deploy.
+/models/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Hero backdrop images — poster webps and video files, versioned by filename.
+/hero/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Album art and video textures — content is stable across deploys.
+/music/*
+  Cache-Control: public, max-age=604800
