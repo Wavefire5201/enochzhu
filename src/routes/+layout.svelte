@@ -15,6 +15,9 @@
 	let restoreFocus: HTMLElement | null = null;
 
 	async function onKeydown(e: KeyboardEvent) {
+		// Terminal feature disabled for now
+		return;
+		/*
 		if (e.key !== "`" || e.metaKey || e.ctrlKey || e.altKey) return;
 		const target = e.target as HTMLElement;
 		if (
@@ -30,6 +33,7 @@
 		}
 		restoreFocus = document.activeElement as HTMLElement;
 		terminalOpen = true;
+		*/
 	}
 
 	function closeTerminal() {
@@ -38,7 +42,7 @@
 	}
 </script>
 
-<svelte:window onkeydown={onKeydown} />
+<!-- <svelte:window onkeydown={onKeydown} /> -->
 
 <svelte:head>
 	<link rel="canonical" href={canonical} />
@@ -56,9 +60,9 @@
 	<meta name="twitter:image" content="{SITE}/og.jpg" />
 </svelte:head>
 
-{#if terminalOpen && Terminal}
+<!-- {#if terminalOpen && Terminal}
 	<Terminal onclose={closeTerminal} />
-{/if}
+{/if} -->
 
 {@render children()}
 
