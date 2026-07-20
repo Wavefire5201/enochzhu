@@ -97,6 +97,10 @@ export const musicSchema = z.object({
 	/** optional manual override of the CD wall's auto-assigned disc face;
 	 * matches a DiscStyle value in src/lib/cd-wall/disc-art.ts */
 	discStyle: z.string().optional(),
+	/** optional specific preview track name to search for (bypassing album title search) */
+	previewTrack: z.string().optional(),
+	/** optional direct iTunes preview URL to play (bypassing search completely) */
+	previewUrl: z.string().optional(),
 	order: z.number().default(99),
 });
 

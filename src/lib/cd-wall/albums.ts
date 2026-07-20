@@ -22,6 +22,8 @@ export interface CdAlbum {
 	note?: string;
 	/** optional manual override of the auto-assigned disc face (see pickDiscStyle) */
 	discStyle?: DiscStyle;
+	previewTrack?: string;
+	previewUrl?: string;
 }
 
 const FALLBACK_COLOR = "#1d211f";
@@ -42,5 +44,7 @@ export function toCdAlbums(entries: Entry<Music>[]): CdAlbum[] {
 			link: e.meta.link,
 			note: e.meta.note,
 			discStyle: e.meta.discStyle as DiscStyle | undefined,
+			previewTrack: e.meta.previewTrack,
+			previewUrl: e.meta.previewUrl,
 		}));
 }

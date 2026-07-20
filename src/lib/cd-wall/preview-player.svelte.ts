@@ -40,13 +40,33 @@ export class PreviewPlayer {
 	#fade: number | null = null;
 	#reqId = 0; // cancels a stale in-flight search
 	#wantPlay = false; // true between open() and close(): the case is held open
+	#activeAlbumId: string | null = null;
+	#positions = new Map<string, number>();
+
+	#savePosition(): void {
+		if (this.#audio && this.#activeAlbumId) {
+			this.#positions.set(this.#activeAlbumId, this.#audio.currentTime);
+		}
+	}
 
 	/** Look up the preview for an album. Cancels any prior search. If the case is
 	 * already open by the time the url resolves, playback starts with a fade. */
 	async load(album: CdAlbum): Promise<void> {
+		this.#savePosition();
 		this.#teardownAudio();
+		this.#activeAlbumId = album.id;
 		this.previewUrl = null;
-		const query = [album.artist, album.title].filter(Boolean).join(" ");
+
+		// 1. Direct Preview URL
+		if (album.previewUrl) {
+			this.previewUrl = album.previewUrl;
+			if (this.#wantPlay) this.open();
+			return;
+		}
+
+		// 2. Search Query (custom track or album title)
+		const trackOrTitle = album.previewTrack || album.title;
+		const query = [album.artist, trackOrTitle].filter(Boolean).join(" ");
 		if (!query) return;
 		this.loading = true;
 		const reqId = ++this.#reqId;
@@ -74,6 +94,12 @@ export class PreviewPlayer {
 		a.preload = "metadata";
 		a.loop = true; // the clip loops so an open case never falls silent
 		a.volume = 0;
+		if (this.#activeAlbumId) {
+			const saved = this.#positions.get(this.#activeAlbumId);
+			if (saved !== undefined) {
+				a.currentTime = saved;
+			}
+		}
 		this.#audio = a;
 		return a;
 	}
@@ -96,6 +122,7 @@ export class PreviewPlayer {
 		const a = this.#audio;
 		if (!a) return;
 		this.#fadeTo(0, () => {
+			this.#savePosition();
 			a.pause();
 			this.playing = false;
 		});
@@ -106,6 +133,7 @@ export class PreviewPlayer {
 		if (this.playing) {
 			const a = this.#audio;
 			if (a) {
+				this.#savePosition();
 				a.pause();
 				this.playing = false;
 			}
@@ -154,6 +182,7 @@ export class PreviewPlayer {
 	#teardownAudio(): void {
 		this.#cancelFade();
 		if (this.#audio) {
+			this.#savePosition();
 			this.#audio.pause();
 			this.#audio = null;
 		}
