@@ -491,8 +491,16 @@
 		);
 	}
 
-	loadCaseModel("detailed");
-	loadCaseModel("charcoal");
+	// The live wall only ever renders its configured model. Loading and
+	// normalizing both GLBs made the first canvas mount needlessly compete with
+	// scrolling; the prototype keeps both resident because its controls can swap
+	// between them at runtime.
+	if (untrack(() => preview)) {
+		loadCaseModel("detailed");
+		loadCaseModel("charcoal");
+	} else {
+		loadCaseModel(untrack(() => caseModel));
+	}
 
 	// Keep the modeled disc from the earlier hand-separated GLB. The new source
 	// bundles contain cases only, so this remains the best disc geometry.

@@ -1,5 +1,5 @@
 ---
-updated: 2026-07-15
+updated: 2026-07-30
 ---
 
 <!--
@@ -15,11 +15,13 @@ recently-played list appear below this prose automatically.
 - this website!
 - sbi portal
 - txtfx
+- some other apps
 
 ## currently reading
 
-- the dark forest by cixin liu
+- death's end by cixin liu
 
 ## currently learning
 
-- to play _arabesque no. 1_ by claude debussy
+- _arabesque no. 1_ by claude debussy
+- _claire de lune_ by claude debussy

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { type Component, onMount } from "svelte";
 	import type { CdAlbum } from "./albums";
-	import { DEFAULT_WALL_HDRI_PATH } from "./models";
+	import { DEFAULT_WALL_CASE_MODEL, DEFAULT_WALL_HDRI_PATH } from "./models";
 
 	interface Props {
 		albums: CdAlbum[];
@@ -56,8 +56,7 @@
 		return Promise.allSettled(
 			[
 				DEFAULT_WALL_HDRI_PATH,
-				"/models/jewel-case-charcoal.glb",
-				"/models/jewel-case-detailed.glb",
+				`/models/jewel-case-${DEFAULT_WALL_CASE_MODEL}.glb`,
 				"/models/cd-case.glb",
 			].map((href) => {
 				// Fetch during the post-hero warm-up rather than relying on `prefetch`:
@@ -83,41 +82,63 @@
 		if (!probe.getContext("webgl2")) return;
 
 		let io: IntersectionObserver | null = null;
-		let warmed = false;
+		type IdleHandle = number | ReturnType<typeof setTimeout>;
+		let warmIdleId: IdleHandle | null = null;
+		let mountIdleId: IdleHandle | null = null;
 		let warmAssets: Promise<void> | null = null;
-		const warmWall = () => {
-			if (warmed) return;
-			// The hero owns startup bandwidth and GPU time. Only begin the CD wall
-			// after the visitor has deliberately left most of it; the large observer
-			// margin below still gives the HDRI several screens of runway before music.
-			if (window.scrollY < window.innerHeight * 0.75) return;
-			warmed = true;
-			window.removeEventListener("scroll", warmWall);
-			warmAssets = prefetchAssets();
-			void preloadWall();
+		let mountStarted = false;
+		let disposed = false;
 
-			io = new IntersectionObserver(
-				async (entries) => {
-					if (!entries.some((entry) => entry.isIntersecting)) return;
-					io?.disconnect();
-					// Commit only while still offscreen, so the fallback cannot flash in
-					// the visible section. The minimal loader appears if HDR decoding has
-					// not completed by the time the canvas reaches the viewport.
-					canvasIntended = true;
-					await Promise.all([warmAssets, preloadWall()]);
-					if (preloaded) Wall3D = preloaded;
-					else failed = true;
-				},
-				{ rootMargin: "2800px" },
-			);
-			if (host) io.observe(host);
+		const warmWall = () => {
+			warmAssets ??= prefetchAssets();
+			void preloadWall();
 		};
-		window.addEventListener("scroll", warmWall, { passive: true });
-		warmWall(); // handles restored scroll positions and direct #music links
+		const idle = (callback: () => void, timeout: number) => {
+			if ("requestIdleCallback" in window) {
+				return window.requestIdleCallback(callback, { timeout });
+			}
+			return setTimeout(callback, timeout);
+		};
+		const cancelIdle = (id: IdleHandle) => {
+			if (typeof id === "number" && "cancelIdleCallback" in window) {
+				window.cancelIdleCallback(id);
+			} else {
+				clearTimeout(id);
+			}
+		};
+		const mountWall = async () => {
+			if (mountStarted || disposed) return;
+			mountStarted = true;
+			warmWall();
+			await Promise.all([warmAssets, preloadWall()]);
+			if (disposed) return;
+			if (preloaded) Wall3D = preloaded;
+			else failed = true;
+		};
+
+		// Import and download on an idle slice, never in a scroll handler. The EXR
+		// remains lazy, but this ensures its network payload and the Three chunk are
+		// normally ready long before the section is near the viewport.
+		warmIdleId = idle(warmWall, 4_000);
+		io = new IntersectionObserver(
+			(entries) => {
+				if (!entries.some((entry) => entry.isIntersecting)) return;
+				io?.disconnect();
+				// Mounting decodes the HDRI and creates the GL context. Doing that from an
+				// idle callback avoids a long task in the same frame as the scroll that
+				// revealed this section. The loader preserves feedback for a fast scroll.
+				canvasIntended = true;
+				mountIdleId = idle(() => void mountWall(), 1_500);
+			},
+			{ rootMargin: "1400px 0px" },
+		);
+		if (host) io.observe(host);
 
 		return () => {
+			disposed = true;
 			io?.disconnect();
-			window.removeEventListener("scroll", warmWall);
+			if (warmIdleId !== null) cancelIdle(warmIdleId);
+			if (mountIdleId !== null) cancelIdle(mountIdleId);
 		};
 	});
 </script>
