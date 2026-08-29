@@ -7,6 +7,16 @@ import type { CdAlbum } from "./albums";
  * closing fades it out — and the fade-out completes even as the panel is torn
  * down. The reactive fields back the play button and the ambient volume orb;
  * the audio element itself is detached from the DOM.
+ *
+ * Level rides on a Web Audio GainNode, not `HTMLAudioElement.volume`: iOS
+ * Safari hard-ignores `.volume` (playback level is hardware-only there), so the
+ * fades and the slider both did nothing on iPhone. The element feeds
+ * element → GainNode → destination and its own `.volume` stays at 1. Two
+ * consequences: the element must be a CORS-clean source (iTunes previews send
+ * `access-control-allow-origin: *`, so `crossOrigin = "anonymous"` is enough —
+ * without it `createMediaElementSource` yields silence), and the AudioContext
+ * must be started inside a user gesture, which is what `unlock()` is for.
+ * Browsers without AudioContext keep the old `.volume` path.
  */
 
 type SearchResponse = { results?: Array<{ previewUrl?: string }> };
@@ -42,6 +52,14 @@ export class PreviewPlayer {
 	#wantPlay = false; // true between open() and close(): the case is held open
 	#activeAlbumId: string | null = null;
 	#positions = new Map<string, number>();
+
+	// one context for the whole wall; the source node is per-element because
+	// createMediaElementSource throws if called twice on the same element
+	#ctx: AudioContext | null = null;
+	#gain: GainNode | null = null;
+	#source: MediaElementAudioSourceNode | null = null;
+	/** current playback level (0..1) — the fade's own state, mirrored to gain */
+	#level = 0;
 
 	#savePosition(): void {
 		if (this.#audio && this.#activeAlbumId) {
@@ -87,13 +105,68 @@ export class PreviewPlayer {
 		}
 	}
 
+	/** lazily build the shared context + gain. False → no Web Audio here. */
+	#ensureGraph(): boolean {
+		if (this.#ctx) return true;
+		if (typeof window === "undefined") return false;
+		const Ctor =
+			window.AudioContext ??
+			(window as unknown as { webkitAudioContext?: typeof AudioContext })
+				.webkitAudioContext;
+		if (!Ctor) return false;
+		try {
+			const ctx = new Ctor();
+			const gain = ctx.createGain();
+			gain.gain.value = this.#level;
+			gain.connect(ctx.destination);
+			this.#ctx = ctx;
+			this.#gain = gain;
+			return true;
+		} catch {
+			return false; // context budget exhausted — fall back to element volume
+		}
+	}
+
+	/**
+	 * Start the audio context from inside a user gesture. iOS only lets a
+	 * context leave `suspended` while a gesture is being handled, and the Svelte
+	 * effect that calls open() runs a microtask later — too late — so the wall
+	 * calls this synchronously from its pointerdown handler.
+	 */
+	unlock(): void {
+		if (!this.#ensureGraph()) return;
+		if (this.#ctx && this.#ctx.state !== "running") void this.#ctx.resume();
+	}
+
+	/** route an element through the gain node; falls back to element volume */
+	#connectAudio(a: HTMLAudioElement): void {
+		if (!this.#ensureGraph() || !this.#ctx || !this.#gain) return;
+		try {
+			this.#source = this.#ctx.createMediaElementSource(a);
+			this.#source.connect(this.#gain);
+			a.volume = 1; // the gain node owns the level from here
+		} catch {
+			this.#source = null;
+		}
+	}
+
+	/** write the level wherever it actually takes effect */
+	#applyLevel(v: number): void {
+		this.#level = v;
+		if (this.#gain && this.#source) this.#gain.gain.value = v;
+		else if (this.#audio) this.#audio.volume = v;
+	}
+
 	#ensureAudio(): HTMLAudioElement | null {
 		if (this.#audio) return this.#audio;
 		if (!this.previewUrl) return null;
-		const a = new Audio(this.previewUrl);
+		const a = new Audio();
+		// must be set before src, or the fetch is not a CORS one and the Web
+		// Audio graph gets a tainted (silent) source
+		a.crossOrigin = "anonymous";
+		a.src = this.previewUrl;
 		a.preload = "metadata";
 		a.loop = true; // the clip loops so an open case never falls silent
-		a.volume = 0;
 		if (this.#activeAlbumId) {
 			const saved = this.#positions.get(this.#activeAlbumId);
 			if (saved !== undefined) {
@@ -101,12 +174,15 @@ export class PreviewPlayer {
 			}
 		}
 		this.#audio = a;
+		this.#connectAudio(a);
+		this.#applyLevel(0); // every clip fades up from silence
 		return a;
 	}
 
 	/** case opened → fade the looping preview in */
 	open(): void {
 		this.#wantPlay = true;
+		this.unlock(); // belt and suspenders; the real gesture hook is pointerdown
 		const a = this.#ensureAudio();
 		if (!a) return; // url not resolved yet; load() re-calls open() when it is
 		void a
@@ -144,24 +220,22 @@ export class PreviewPlayer {
 
 	setVolume(v: number): void {
 		this.volume = clamp01(v);
-		// live drag: bypass the fade and set the element directly
-		const a = this.#audio;
-		if (a && this.#wantPlay) {
+		// live drag: bypass the fade and set the level directly
+		if (this.#audio && this.#wantPlay) {
 			this.#cancelFade();
-			a.volume = this.volume;
+			this.#applyLevel(this.volume);
 		}
 	}
 
 	#fadeTo(target: number, done?: () => void): void {
-		const a = this.#audio;
-		if (!a) return;
+		if (!this.#audio) return;
 		this.#cancelFade();
-		const from = a.volume;
+		const from = this.#level;
 		const dur = fadeDuration();
 		const start = performance.now();
 		const step = (now: number) => {
 			const t = Math.min(1, (now - start) / dur);
-			a.volume = clamp01(from + (target - from) * t);
+			this.#applyLevel(clamp01(from + (target - from) * t));
 			if (t < 1) {
 				this.#fade = requestAnimationFrame(step);
 			} else {
@@ -186,12 +260,24 @@ export class PreviewPlayer {
 			this.#audio.pause();
 			this.#audio = null;
 		}
+		// the source node is bound to the element that just died; the context and
+		// gain stay, because re-creating a context needs another user gesture
+		if (this.#source) {
+			this.#source.disconnect();
+			this.#source = null;
+		}
+		this.#level = 0;
 		this.playing = false;
 	}
 
 	/** parent unmount: stop everything and invalidate pending searches */
 	destroy(): void {
 		this.#teardownAudio();
+		// closed only here, on a real unmount: browsers cap how many contexts a
+		// page may hold, so a remounted wall must not strand this one
+		void this.#ctx?.close().catch(() => {});
+		this.#ctx = null;
+		this.#gain = null;
 		this.#reqId++;
 		this.previewUrl = null;
 	}

@@ -111,6 +111,12 @@
 	// drag via window listeners, no pointer capture: capture would retarget
 	// pointerup away from the canvas and break tap-to-open on the cases
 	function down(event: PointerEvent) {
+		// Every gesture on the wall passes through here, including the tap that
+		// opens a case and the presses on the transport/volume controls above the
+		// canvas. iOS only starts an AudioContext from inside a gesture, and the
+		// effect that reacts to `openedSlot` runs too late to count, so the
+		// preview's audio graph is started here — before any early return.
+		player.unlock();
 		if (event.pointerType === "mouse" && event.button !== 0) return;
 		pressed = true;
 		scroll.beginDrag(event.clientX, performance.now());
