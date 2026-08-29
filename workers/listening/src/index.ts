@@ -27,7 +27,7 @@ const IMG_HOSTS = new Set([
 type VisitEnv = Env & { BLACKLISTED_LOCATIONS?: string };
 
 export default {
-	async fetch(request, env): Promise<Response> {
+	async fetch(request, env, ctx): Promise<Response> {
 		const cors = corsHeaders(request.headers.get("Origin"), env);
 
 		if (request.method === "OPTIONS") {
@@ -71,11 +71,14 @@ export default {
 			const feed = trimFeed(data, TRACK_LIMIT);
 			// route covers through our own /img so they are first-party + edge-cached
 			const origin = new URL(request.url).origin;
+			const upstreamCovers = new Set<string>();
 			for (const track of feed.tracks) {
 				if (track.cover) {
+					if (allowedImageUrl(track.cover)) upstreamCovers.add(track.cover);
 					track.cover = `${origin}/img?u=${encodeURIComponent(track.cover)}`;
 				}
 			}
+			ctx.waitUntil(warmCovers([...upstreamCovers].slice(0, TRACK_LIMIT)));
 			return json(feed, 200, cors, CACHE_TTL);
 		} catch (err) {
 			console.log(
@@ -90,19 +93,47 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
-/** Proxy + edge-cache an allowlisted album-art URL. Loaded via <img>, so no CORS. */
-async function proxyImage(request: Request): Promise<Response> {
-	const src = new URL(request.url).searchParams.get("u");
-	if (!src) return new Response("missing u", { status: 400 });
+/** The allowlist gate, shared by /img and the cover warmer. Null → not ours. */
+function allowedImageUrl(src: string): URL | null {
 	let target: URL;
 	try {
 		target = new URL(src);
 	} catch {
-		return new Response("bad url", { status: 400 });
+		return null;
 	}
 	if (target.protocol !== "https:" || !IMG_HOSTS.has(target.hostname)) {
-		return new Response("forbidden", { status: 403 });
+		return null;
 	}
+	return target;
+}
+
+/**
+ * Pull each cover into the edge cache while the visitor is still reading the
+ * feed response, so the /img requests their browser fires a moment later are
+ * already warm. It has to happen here, inside their own request: Cloudflare's
+ * cache is per-colo, so a cron would only ever warm whichever colo the
+ * scheduled run landed in — never the one this visitor is talking to.
+ * Best-effort by construction: allSettled swallows every upstream failure, and
+ * the body is cancelled because only the cache entry is wanted.
+ */
+async function warmCovers(covers: string[]): Promise<void> {
+	await Promise.allSettled(
+		covers.map(async (url) => {
+			const res = await fetch(url, {
+				cf: { cacheTtl: IMG_CACHE_TTL, cacheEverything: true },
+			});
+			await res.body?.cancel();
+		}),
+	);
+}
+
+/** Proxy + edge-cache an allowlisted album-art URL. Loaded via <img>, so no CORS. */
+async function proxyImage(request: Request): Promise<Response> {
+	const src = new URL(request.url).searchParams.get("u");
+	if (!src) return new Response("missing u", { status: 400 });
+	if (!URL.canParse(src)) return new Response("bad url", { status: 400 });
+	const target = allowedImageUrl(src);
+	if (!target) return new Response("forbidden", { status: 403 });
 	const upstream = await fetch(target.toString(), {
 		cf: { cacheTtl: IMG_CACHE_TTL, cacheEverything: true },
 	});
