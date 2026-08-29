@@ -238,7 +238,19 @@
 				<a class="link-trace" href="#projects">projects</a>
 				<a class="link-trace" href="#contact">contact</a>
 				<a class="link-trace" href="/now">now</a>
+				<a class="link-trace" href="#music">music</a>
 			</nav>
+		</div>
+
+		<!-- points at the CD wall — grouped with the name/nav block (not the
+		     switcher) so it doesn't inherit switcherOpacity's early scroll fade -->
+		<div class="mx-auto max-w-4xl px-6">
+			<a
+				href="#music"
+				class="hero-cd-hint mt-3 block text-right font-mono text-xs text-ember italic transition-opacity hover:opacity-80 md:mt-2"
+			>
+				<span aria-hidden="true">↓</span> there's a cd wall at the bottom
+			</a>
 		</div>
 	</div>
 
@@ -252,6 +264,7 @@
 		<a class="link-trace" href="#projects">projects</a>
 		<a class="link-trace" href="#contact">contact</a>
 		<a class="link-trace" href="/now">now</a>
+		<a class="link-trace" href="#music">music</a>
 	</nav>
 
 	<!-- backdrop switcher + photo credit; desktop only — the mobile bottom-left
@@ -310,5 +323,25 @@
 
 	:global(.js) .hero-poster-mask {
 		display: block;
+	}
+
+	.hero-cd-hint {
+		animation: hero-cd-hint-drift 3.5s ease-in-out infinite;
+	}
+
+	@keyframes hero-cd-hint-drift {
+		0%,
+		100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(3px);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.hero-cd-hint {
+			animation: none;
+		}
 	}
 </style>
