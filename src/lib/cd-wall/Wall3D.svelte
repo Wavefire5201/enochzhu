@@ -63,6 +63,17 @@
 			onopen(null); // moving the row closes an open case
 		};
 		el.addEventListener("wheel", onWheel, { passive: false });
+		// A hold-to-turn gesture must own the touch for as long as the finger is
+		// down. The row advertises `touch-action: pan-y` so the page still scrolls
+		// past this section, but that also lets the browser claim a mostly-vertical
+		// drag as a page pan a beat after it starts — and taking over fires
+		// `pointercancel`, which CdCase treats as a release. Cancelling the move
+		// before the pan begins keeps the case under the finger for a full 360°.
+		const onTouchMove = (event: TouchEvent) => {
+			if (!scroll.inspecting && openedSlot === null) return;
+			if (event.cancelable) event.preventDefault();
+		};
+		el.addEventListener("touchmove", onTouchMove, { passive: false });
 		// clicking outside the canvas closes an open case — feels right, keeps
 		// the focus on the content the user is reading
 		const onBackgroundClick = (event: MouseEvent) => {
@@ -76,6 +87,7 @@
 		window.addEventListener("keydown", onKey);
 		return () => {
 			el.removeEventListener("wheel", onWheel);
+			el.removeEventListener("touchmove", onTouchMove);
 			window.removeEventListener("mousedown", onBackgroundClick);
 			window.removeEventListener("keydown", onKey);
 			// unmount mid-drag (context loss during a fling, section teardown)
@@ -152,6 +164,11 @@
 </script>
 
 <!-- decorative: the accessible album list lives in CdWall -->
+<!-- touch-action is read once, when a gesture starts: `pan-y` at rest keeps the
+     page scrolling past this section, and a focused case (whose state already
+     pins the page) takes `none` so hold-and-turn owns the finger outright
+     instead of being cancelled the moment the browser decides it is a pan.
+     -webkit-touch-callout keeps iOS's long-press menu from cancelling it too. -->
 <div
 	bind:this={host}
 	class="relative h-112 w-full select-none sm:h-144 {grabbing
@@ -159,7 +176,9 @@
 		: hovered
 			? 'cursor-pointer'
 			: 'cursor-grab'}"
-	style="touch-action: pan-y"
+	style="touch-action: {openedSlot !== null
+		? 'none'
+		: 'pan-y'}; -webkit-touch-callout: none"
 	aria-hidden="true"
 	onpointerdown={down}
 >
