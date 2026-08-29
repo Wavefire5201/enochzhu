@@ -238,19 +238,23 @@
 				<a class="link-trace" href="#projects">projects</a>
 				<a class="link-trace" href="#contact">contact</a>
 				<a class="link-trace" href="/now">now</a>
-				<a class="link-trace" href="#music">music</a>
+				<a class="link-trace" href="#music"
+					>music<svg
+						class="cd-glyph ml-1 inline-block h-[0.85em] w-[0.85em] align-[-0.1em] text-ember"
+						viewBox="0 0 16 16"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.4"
+						stroke-linecap="round"
+						aria-hidden="true"
+					>
+						<circle cx="8" cy="8" r="6.5" />
+						<circle cx="8" cy="8" r="1.6" />
+						<path d="M8 1.9v1.8" />
+						<path d="M13.6 9.4l-1.7-.5" />
+					</svg></a
+				>
 			</nav>
-		</div>
-
-		<!-- points at the CD wall — grouped with the name/nav block (not the
-		     switcher) so it doesn't inherit switcherOpacity's early scroll fade -->
-		<div class="mx-auto max-w-4xl px-6">
-			<a
-				href="#music"
-				class="hero-cd-hint mt-3 block text-right font-mono text-xs text-ember italic transition-opacity hover:opacity-80 md:mt-2"
-			>
-				<span aria-hidden="true">↓</span> there's a cd wall at the bottom
-			</a>
 		</div>
 	</div>
 
@@ -264,7 +268,22 @@
 		<a class="link-trace" href="#projects">projects</a>
 		<a class="link-trace" href="#contact">contact</a>
 		<a class="link-trace" href="/now">now</a>
-		<a class="link-trace" href="#music">music</a>
+		<a class="link-trace" href="#music"
+			>music<svg
+				class="cd-glyph ml-1 inline-block h-[0.85em] w-[0.85em] align-[-0.1em] text-ember"
+				viewBox="0 0 16 16"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.4"
+				stroke-linecap="round"
+				aria-hidden="true"
+			>
+				<circle cx="8" cy="8" r="6.5" />
+				<circle cx="8" cy="8" r="1.6" />
+				<path d="M8 1.9v1.8" />
+				<path d="M13.6 9.4l-1.7-.5" />
+			</svg></a
+		>
 	</nav>
 
 	<!-- backdrop switcher + photo credit; desktop only — the mobile bottom-left
@@ -325,22 +344,19 @@
 		display: block;
 	}
 
-	.hero-cd-hint {
-		animation: hero-cd-hint-drift 3.5s ease-in-out infinite;
+	.cd-glyph {
+		animation: cd-glyph-spin 12s linear infinite;
+		transform-origin: center;
 	}
 
-	@keyframes hero-cd-hint-drift {
-		0%,
-		100% {
-			transform: translateY(0);
-		}
-		50% {
-			transform: translateY(3px);
+	@keyframes cd-glyph-spin {
+		to {
+			transform: rotate(360deg);
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.hero-cd-hint {
+		.cd-glyph {
 			animation: none;
 		}
 	}
