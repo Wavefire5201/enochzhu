@@ -27,6 +27,9 @@ export default defineConfig({
 						w.filename?.endsWith(".md")
 					),
 			},
+			// with every post a draft, /blog/[slug] generates no entries and nothing
+			// links to it; that is a valid state, not a build failure
+			prerender: { handleUnseenRoutes: "warn" },
 			adapter: adapter({ fallback: "404.html" }),
 		}),
 	],

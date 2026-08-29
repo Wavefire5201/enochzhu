@@ -21,8 +21,8 @@
 />
 
 <svelte:head>
-	<!-- reachable by link only: never indexed, never in the sitemap -->
-	<meta name="robots" content="noindex, nofollow" />
+	<!-- og:type is set site-wide in +layout.svelte; just date the article here -->
+	<meta property="article:published_time" content={post.meta.date} />
 </svelte:head>
 
 <main class="mx-auto max-w-4xl px-6 py-24 print:py-8">
@@ -40,7 +40,7 @@
 				alt="enoch zhu"
 				width="96"
 				height="96"
-				class="h-20 w-20 shrink-0 rounded-sm object-cover grayscale sm:h-24 sm:w-24 print:grayscale-0"
+				class="h-20 w-20 shrink-0 rounded-sm object-cover sm:h-24 sm:w-24 print:grayscale-0"
 			/>
 		{/if}
 	</header>
@@ -55,7 +55,7 @@
 	</article>
 
 	<p class="mt-16 flex items-baseline gap-2 font-mono text-xs text-muted">
-		<a href="/" class="link-trace print:hidden">cd /</a>
+		<a href="/blog" class="link-trace print:hidden">cd ..</a>
 		{#if wordCount !== null}
 			<span class="print:hidden">·</span>
 			<span>{wordCount} words</span>
