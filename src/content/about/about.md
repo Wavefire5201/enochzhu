@@ -18,7 +18,7 @@ experience:
     description: "migrated a legacy apache solr / .net search app to a new production server and wrote a multi-threaded indexer that cut reindexing time by 90% with zero downtime. also automated 1,000+ customer access updates in python and trained 300+ agents on a cisco–salesforce integration."
   - role: director of external technologies
     organization: sustainable building initiative (sbi)
-    comment: i made this website!
+    # comment: i made this website!
     period: 2024–2026
     link: https://utsbi.org/
     description: "lead a 12-person tech team shipping internal tools for 5 departments and 70+ members: the public site, a client/team portal, and automation for a $25m+ project portfolio."
