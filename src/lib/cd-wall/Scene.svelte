@@ -48,7 +48,7 @@
 		type DitherDiscOptions,
 		DEFAULT_DITHER_DISC_OPTIONS,
 	} from "./disc-art";
-	import { albumIndexAt, poolSize } from "./layout";
+	import { albumIndexAt, floorMod, poolSize } from "./layout";
 	import {
 		BOOKLET_RECT,
 		CASE_MODEL_HUB,
@@ -737,27 +737,68 @@
 		};
 	});
 
+	// Pre-warm the dither faces, ONE album per idle slice. Building all of them
+	// at mount piled every cover decode and canvas rasterisation into the frames
+	// where the wall is still starting up. Nothing depends on this — the effect
+	// above builds and caches the face on open — so it yields to anything real.
+	// Order runs outward from the album parked under the camera, since that is
+	// the one a visitor can open first.
 	$effect(() => {
-		// Pre-warm dither maps cache for all albums
-		if (preview) return;
-		for (const album of albums) {
-			const cacheKey = `dither_${album.id}_256_bw`;
-			if (!discMapsCache.has(cacheKey)) {
-				createDiscMaps("dither", album, halftoneOptions, {
-					density: 256,
-					colorMode: "bw",
-					contrast: ditherOptions.contrast ?? 1.0,
-				})
-					.then((maps) => {
-						if (!discMapsCache.has(cacheKey)) {
-							discMapsCache.set(cacheKey, maps);
-						} else {
-							maps.dispose();
-						}
-					})
-					.catch(() => {});
-			}
+		if (preview || albums.length === 0) return;
+		const options = halftoneOptions;
+		const ditherOpts: DitherDiscOptions = {
+			density: 256,
+			colorMode: "bw",
+			contrast: ditherOptions.contrast ?? 1.0,
+		};
+		// scroll is a plain object, so this reads the live offset without
+		// subscribing the effect to every frame of scrolling
+		const center = untrack(() =>
+			albumIndexAt(Math.round(scroll.offset / SPACING), albums.length),
+		);
+		const order = [center];
+		for (let d = 1; order.length < albums.length; d++) {
+			order.push(floorMod(center + d, albums.length));
+			if (order.length < albums.length)
+				order.push(floorMod(center - d, albums.length));
 		}
+
+		const idle = typeof requestIdleCallback === "function";
+		const schedule = (fn: () => void) =>
+			idle ? requestIdleCallback(fn) : setTimeout(fn, 0);
+		const unschedule = (handle: number | ReturnType<typeof setTimeout>) => {
+			if (idle) cancelIdleCallback(handle as number);
+			else clearTimeout(handle);
+		};
+
+		let cancelled = false;
+		let pending: number | ReturnType<typeof setTimeout> | null = null;
+		let next = 0;
+		const warmOne = () => {
+			pending = null;
+			if (cancelled || next >= order.length) return;
+			const album = albums[order[next++]];
+			const cacheKey = `dither_${album.id}_256_bw`;
+			if (discMapsCache.has(cacheKey)) {
+				pending = schedule(warmOne);
+				return;
+			}
+			createDiscMaps("dither", album, options, ditherOpts)
+				.then((maps) => {
+					if (cancelled || discMapsCache.has(cacheKey)) maps.dispose();
+					else discMapsCache.set(cacheKey, maps);
+				})
+				.catch(() => {})
+				.finally(() => {
+					if (!cancelled) pending = schedule(warmOne);
+				});
+		};
+		pending = schedule(warmOne);
+
+		return () => {
+			cancelled = true;
+			if (pending !== null) unschedule(pending);
+		};
 	});
 
 	// Lightbox environment: a black studio with softbox strips, built in code

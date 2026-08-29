@@ -1,5 +1,6 @@
-import { SRGBColorSpace, type Texture, TextureLoader } from "three";
+import { SRGBColorSpace, Texture } from "three";
 import type { CdAlbum } from "./albums";
+import { loadCoverBitmap } from "./cover-image";
 
 /**
  * Texture streaming for the wall (PRD-cd-wall §5.2). One cache per mounted
@@ -16,7 +17,6 @@ export interface CoverCache {
 }
 
 export function createCoverCache(anisotropy: number): CoverCache {
-	const loader = new TextureLoader();
 	const entries = new Map<
 		string,
 		{ texture: Texture | null; promise: Promise<Texture> }
@@ -28,9 +28,19 @@ export function createCoverCache(anisotropy: number): CoverCache {
 		if (!entry) {
 			const record: { texture: Texture | null; promise: Promise<Texture> } = {
 				texture: null,
-				promise: loader.loadAsync(album.cover).then((texture) => {
+				promise: loadCoverBitmap(album.cover).then((source) => {
+					const texture = new Texture(source);
 					texture.colorSpace = SRGBColorSpace;
 					texture.anisotropy = anisotropy;
+					if (source instanceof ImageBitmap) {
+						// three skips UNPACK_FLIP_Y for ImageBitmap sources, so the usual
+						// flipY upload never happens. Flip in UV space instead — same
+						// result as TextureLoader's default, and free on the GPU.
+						texture.flipY = false;
+						texture.repeat.y = -1;
+						texture.offset.y = 1;
+					}
+					texture.needsUpdate = true;
 					if (disposed) texture.dispose();
 					else record.texture = texture;
 					return texture;

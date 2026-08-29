@@ -1,13 +1,15 @@
 import { CanvasTexture, SRGBColorSpace } from "three";
 import { buildGlyphAtlas } from "../hero/glyph-atlas";
 import type { CdAlbum } from "./albums";
+import { type CoverImage, loadCoverBitmap } from "./cover-image";
 
 /**
  * Disc-face treatments, previewable in /proto/cd-case. A real CD is two
- * surfaces: a matte printed LABEL and a shiny mirror DATA ring — so a style is
- * not one image but a (colour, metalness, roughness) triple of canvas maps that
- * let the label read as print while the rings still glint. "mirror" returns no
- * maps and falls back to the material's own iridescent metal.
+ * surfaces: a matte printed LABEL and a shiny mirror DATA ring, and a style
+ * paints both into one colour map — the rings glint because the disc material
+ * underneath is already metal, not because the style ships its own
+ * metalness/roughness maps. "mirror" returns no map at all and falls back to
+ * the material's own iridescent metal.
  */
 export type DiscStyle =
 	| "mirror"
@@ -119,8 +121,6 @@ export const DISC_STYLES: { value: DiscStyle; label: string; hint: string }[] =
 
 export interface DiscMaps {
 	map: CanvasTexture | null;
-	metalnessMap: CanvasTexture | null;
-	roughnessMap: CanvasTexture | null;
 	dispose(): void;
 }
 
@@ -208,30 +208,6 @@ function texture(el: HTMLCanvasElement, srgb: boolean): CanvasTexture {
 	if (srgb) tex.colorSpace = SRGBColorSpace;
 	tex.needsUpdate = true;
 	return tex;
-}
-
-/**
- * metalness/roughness share a layout: the printed label (hub→edge) is matte, the
- * clamp ring and outer rim are mirror. White = shiny/smooth, black = matte/rough.
- */
-function metalCanvas() {
-	const el = canvas();
-	const ctx = el.getContext("2d")!;
-	ctx.fillStyle = "#000"; // matte print everywhere by default
-	ctx.fillRect(0, 0, SIZE, SIZE);
-	ring(ctx, R_HUB, R_CLAMP, "#fff"); // shiny clamp ring by the hub
-	ring(ctx, R_EDGE, R_OUT, "#fff"); // shiny outer rim
-	return el;
-}
-
-function roughCanvas() {
-	const el = canvas();
-	const ctx = el.getContext("2d")!;
-	ctx.fillStyle = "#cfcfcf"; // matte label: rough
-	ctx.fillRect(0, 0, SIZE, SIZE);
-	ring(ctx, R_HUB, R_CLAMP, "#0a0a0a"); // rings: near-mirror smooth
-	ring(ctx, R_EDGE, R_OUT, "#0a0a0a");
-	return el;
 }
 
 function readable(hex: string) {
@@ -479,55 +455,56 @@ function curvedText(
  * palette style renders. Resolves to [] on any failure — callers fall back to
  * the album's single dominant colour.
  */
-export function extractPalette(src: string, count = 6): Promise<string[]> {
-	return new Promise((resolve) => {
-		const img = new Image();
-		img.crossOrigin = "anonymous";
-		img.onload = () => {
-			const n = 48;
-			const el = document.createElement("canvas");
-			el.width = el.height = n;
-			const ctx = el.getContext("2d", { willReadFrequently: true });
-			if (!ctx) return resolve([]);
-			ctx.drawImage(img, 0, 0, n, n);
-			const data = ctx.getImageData(0, 0, n, n).data;
-			const buckets = new Map<
-				number,
-				{ r: number; g: number; b: number; n: number }
-			>();
-			for (let i = 0; i < data.length; i += 4) {
-				if (data[i + 3] < 128) continue;
-				const r = data[i],
-					g = data[i + 1],
-					b = data[i + 2];
-				const key = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
-				const e = buckets.get(key);
-				if (e) {
-					e.r += r;
-					e.g += g;
-					e.b += b;
-					e.n++;
-				} else buckets.set(key, { r, g, b, n: 1 });
-			}
-			const sorted = [...buckets.values()]
-				.map((e) => ({ r: e.r / e.n, g: e.g / e.n, b: e.b / e.n, n: e.n }))
-				.sort((a, b) => b.n - a.n);
-			const chosen: { r: number; g: number; b: number }[] = [];
-			for (const col of sorted) {
-				if (chosen.length >= count) break;
-				const far = chosen.every((c2) => {
-					const dr = c2.r - col.r,
-						dg = c2.g - col.g,
-						db = c2.b - col.b;
-					return dr * dr + dg * dg + db * db > 900; // ≥ ~30/channel apart
-				});
-				if (far) chosen.push(col);
-			}
-			resolve(chosen.map((c2) => rgbHex(c2.r, c2.g, c2.b)));
-		};
-		img.onerror = () => resolve([]);
-		img.src = src;
-	});
+export async function extractPalette(
+	src: string,
+	count = 6,
+): Promise<string[]> {
+	let img: CoverImage;
+	try {
+		img = await loadCoverBitmap(src);
+	} catch {
+		return [];
+	}
+	const n = 48;
+	const el = document.createElement("canvas");
+	el.width = el.height = n;
+	const ctx = el.getContext("2d", { willReadFrequently: true });
+	if (!ctx) return [];
+	ctx.drawImage(img, 0, 0, n, n);
+	const data = ctx.getImageData(0, 0, n, n).data;
+	const buckets = new Map<
+		number,
+		{ r: number; g: number; b: number; n: number }
+	>();
+	for (let i = 0; i < data.length; i += 4) {
+		if (data[i + 3] < 128) continue;
+		const r = data[i],
+			g = data[i + 1],
+			b = data[i + 2];
+		const key = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+		const e = buckets.get(key);
+		if (e) {
+			e.r += r;
+			e.g += g;
+			e.b += b;
+			e.n++;
+		} else buckets.set(key, { r, g, b, n: 1 });
+	}
+	const sorted = [...buckets.values()]
+		.map((e) => ({ r: e.r / e.n, g: e.g / e.n, b: e.b / e.n, n: e.n }))
+		.sort((a, b) => b.n - a.n);
+	const chosen: { r: number; g: number; b: number }[] = [];
+	for (const col of sorted) {
+		if (chosen.length >= count) break;
+		const far = chosen.every((c2) => {
+			const dr = c2.r - col.r,
+				dg = c2.g - col.g,
+				db = c2.b - col.b;
+			return dr * dr + dg * dg + db * db > 900; // ≥ ~30/channel apart
+		});
+		if (far) chosen.push(col);
+	}
+	return chosen.map((c2) => rgbHex(c2.r, c2.g, c2.b));
 }
 
 /** minimal print: title small near the hub, a lot of bare disc, one accent ring */
@@ -1018,91 +995,86 @@ async function ditherBase(
 	palette: string[],
 	options: DitherDiscOptions = DEFAULT_DITHER_DISC_OPTIONS,
 ): Promise<HTMLCanvasElement> {
-	return new Promise((resolve, reject) => {
-		const img = new Image();
-		img.crossOrigin = "anonymous";
-		img.onload = () => {
-			const n = options.density;
-			const buf = document.createElement("canvas");
-			buf.width = buf.height = n;
-			const bctx = buf.getContext("2d", { willReadFrequently: true })!;
-			const s = Math.max(n / img.width, n / img.height);
-			const w = img.width * s,
-				h = img.height * s;
-			bctx.drawImage(img, n / 2 - w / 2, n / 2 - h / 2, w, h);
-			const pixels = bctx.getImageData(0, 0, n, n).data;
+	const img = await loadCoverBitmap(album.cover);
+	const n = options.density;
+	const buf = document.createElement("canvas");
+	buf.width = buf.height = n;
+	const bctx = buf.getContext("2d", { willReadFrequently: true })!;
+	const s = Math.max(n / img.width, n / img.height);
+	const w = img.width * s,
+		h = img.height * s;
+	bctx.drawImage(img, n / 2 - w / 2, n / 2 - h / 2, w, h);
+	const pixels = bctx.getImageData(0, 0, n, n).data;
 
-			const el = canvas();
-			const ctx = el.getContext("2d")!;
-			clipDisc(ctx);
+	const el = canvas();
+	const ctx = el.getContext("2d")!;
+	clipDisc(ctx);
 
-			// Determine light and dark colors
-			let lightColor: [number, number, number] = [255, 255, 255];
-			let darkColor: [number, number, number] = [0, 0, 0];
+	// Determine light and dark colors
+	let lightColor: [number, number, number] = [255, 255, 255];
+	let darkColor: [number, number, number] = [0, 0, 0];
 
-			const [ar, ag, ab] = hexRgb(album.color);
+	const [ar, ag, ab] = hexRgb(album.color);
 
-			if (options.colorMode === "bw") {
-				lightColor = [245, 245, 245];
-				darkColor = [10, 10, 10];
-			} else if (options.colorMode === "album") {
-				const ink = mostVibrant(palette) ?? album.color;
-				lightColor = hexRgb(ink);
-				darkColor = [
-					Math.round(ar * 0.08),
-					Math.round(ag * 0.08),
-					Math.round(ab * 0.08),
-				];
-			} else if (options.colorMode === "green") {
-				lightColor = [139, 172, 15]; // GameBoy light green
-				darkColor = [15, 30, 18]; // GameBoy dark green
-			} else if (options.colorMode === "amber") {
-				lightColor = [255, 176, 0]; // Amber phosphor
-				darkColor = [21, 10, 0]; // Dark amber
-			}
+	if (options.colorMode === "bw") {
+		lightColor = [245, 245, 245];
+		darkColor = [10, 10, 10];
+	} else if (options.colorMode === "album") {
+		const ink = mostVibrant(palette) ?? album.color;
+		lightColor = hexRgb(ink);
+		darkColor = [
+			Math.round(ar * 0.08),
+			Math.round(ag * 0.08),
+			Math.round(ab * 0.08),
+		];
+	} else if (options.colorMode === "green") {
+		lightColor = [139, 172, 15]; // GameBoy light green
+		darkColor = [15, 30, 18]; // GameBoy dark green
+	} else if (options.colorMode === "amber") {
+		lightColor = [255, 176, 0]; // Amber phosphor
+		darkColor = [21, 10, 0]; // Dark amber
+	}
 
-			// Fill background
-			ctx.fillStyle = rgbHex(darkColor[0], darkColor[1], darkColor[2]);
-			ctx.fillRect(0, 0, SIZE, SIZE);
+	// Resolve the dither at its own resolution — one pixel per cell — then blow
+	// it up nearest-neighbour. Painting each cell as its own fillRect meant
+	// density² canvas ops (65k per album at 256), which is what made warming a
+	// disc face expensive; a single scaled blit draws the identical hard-edged
+	// blocks. The source buffer is reusable: `pixels` above is already a copy.
+	const out = new ImageData(n, n);
+	const cells = out.data;
+	for (let y = 0; y < n; y++) {
+		for (let x = 0; x < n; x++) {
+			const i = (y * n + x) * 4;
+			const r = pixels[i];
+			const g = pixels[i + 1];
+			const b = pixels[i + 2];
+			const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 
-			const cell = SIZE / n;
-			for (let y = 0; y < n; y++) {
-				for (let x = 0; x < n; x++) {
-					const i = (y * n + x) * 4;
-					const r = pixels[i];
-					const g = pixels[i + 1];
-					const b = pixels[i + 2];
-					const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+			// Apply contrast around 0.5 midpoint
+			const adjusted = (lum - 0.5) * options.contrast + 0.5;
 
-					// Apply contrast around 0.5 midpoint
-					const adjusted = (lum - 0.5) * options.contrast + 0.5;
+			// Get 8x8 Bayer threshold value mapped to 0..1
+			const th = (BAYER_8[(y % 8) * 8 + (x % 8)] + 0.5) / 64;
 
-					// Get 8x8 Bayer threshold value mapped to 0..1
-					const th = (BAYER_8[(y % 8) * 8 + (x % 8)] + 0.5) / 64;
+			const ink = adjusted > th ? lightColor : darkColor;
+			cells[i] = ink[0];
+			cells[i + 1] = ink[1];
+			cells[i + 2] = ink[2];
+			cells[i + 3] = 255;
+		}
+	}
+	bctx.putImageData(out, 0, 0);
+	// the clip keeps everything outside the disc transparent, as before
+	ctx.imageSmoothingEnabled = false;
+	ctx.drawImage(buf, 0, 0, SIZE, SIZE);
 
-					if (adjusted > th) {
-						ctx.fillStyle = rgbHex(lightColor[0], lightColor[1], lightColor[2]);
-						ctx.fillRect(
-							Math.round(x * cell),
-							Math.round(y * cell),
-							Math.ceil(cell),
-							Math.ceil(cell),
-						);
-					}
-				}
-			}
+	// CD anatomy
+	clearRing(ctx, R_HUB, R_CLAMP);
+	clearRing(ctx, R_EDGE, R_OUT);
+	const accent = mostVibrant(palette) ?? album.color;
+	strokeRing(ctx, R_EDGE - 6, accent, 2);
 
-			// CD anatomy
-			clearRing(ctx, R_HUB, R_CLAMP);
-			clearRing(ctx, R_EDGE, R_OUT);
-			const accent = mostVibrant(palette) ?? album.color;
-			strokeRing(ctx, R_EDGE - 6, accent, 2);
-
-			resolve(el);
-		};
-		img.onerror = reject;
-		img.src = album.cover;
-	});
+	return el;
 }
 
 /** textless generative mandala: palette-seeded segmented rings + rays */
@@ -1271,8 +1243,6 @@ export function pickDiscStyle(album: CdAlbum): DiscStyle {
 
 const EMPTY: DiscMaps = {
 	map: null,
-	metalnessMap: null,
-	roughnessMap: null,
 	dispose() {},
 };
 
@@ -1338,16 +1308,10 @@ export async function createDiscMaps(
 			base = labelBase(album);
 	}
 	const map = texture(base, true);
-	const metalnessMap = texture(metalCanvas(), false);
-	const roughnessMap = texture(roughCanvas(), false);
 	const maps: DiscMaps = {
 		map,
-		metalnessMap,
-		roughnessMap,
 		dispose() {
 			map.dispose();
-			metalnessMap.dispose();
-			roughnessMap.dispose();
 		},
 	};
 	return maps;

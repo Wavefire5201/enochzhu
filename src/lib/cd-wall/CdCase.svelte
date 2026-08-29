@@ -6,8 +6,10 @@
 		BackSide,
 		Color,
 		DoubleSide,
+		DataTexture,
 		MeshBasicMaterial,
 		MeshPhysicalMaterial,
+		SRGBColorSpace,
 		type Texture,
 		CanvasTexture,
 	} from "three";
@@ -223,10 +225,24 @@
 	const placeholderColor = new Color("#1d211f");
 	const litColor = new Color("#ffffff");
 	const PAPER = new Color("#d9d6cf");
+	// A 1x1 white pixel stands in until the real cover arrives. Binding a map at
+	// all times is the point: USE_MAP never toggles, so swapping in the cover (or
+	// an animated one) is a uniform change instead of a shader recompile — and
+	// white multiplied by the material colour is exactly the mapless look.
+	const blankCover = new DataTexture(
+		new Uint8Array([255, 255, 255, 255]),
+		1,
+		1,
+	);
+	blankCover.colorSpace = SRGBColorSpace;
+	blankCover.needsUpdate = true;
 	const coverMaterial = new MeshBasicMaterial({
 		color: placeholderColor.clone(),
+		map: blankCover,
 		toneMapped: true,
 	});
+	/** the real cover currently bound, or null while the blank stands in */
+	let coverTexture: Texture | null = null;
 
 	function assign(next: CdAlbum) {
 		album = next;
@@ -236,7 +252,7 @@
 		bookletBackMaterial.color.set(next.color).lerp(PAPER, 0.8);
 		cardMaterial.color.copy(bookletBackMaterial.color);
 		setCoverMap(covers.get(next));
-		if (!coverMaterial.map) {
+		if (!coverTexture) {
 			covers
 				.ready(next)
 				.then((texture) => {
@@ -276,9 +292,10 @@
 	});
 
 	function setCoverMap(texture: Texture | null) {
-		coverMaterial.map = texture;
-		// swapping a map in or out changes the shader's defines
-		coverMaterial.needsUpdate = true;
+		// no needsUpdate: the blank keeps a map bound either way, so the defines
+		// this material compiled with never change
+		coverTexture = texture;
+		coverMaterial.map = texture ?? blankCover;
 	}
 
 	useTask((delta) => {
@@ -299,9 +316,8 @@
 		if (album?.video) {
 			const videoTexture = videos.get(album);
 			videos.keep(album.id);
-			if (videoTexture && coverMaterial.map !== videoTexture) {
-				coverMaterial.map = videoTexture;
-				coverMaterial.needsUpdate = true;
+			if (videoTexture && coverTexture !== videoTexture) {
+				setCoverMap(videoTexture);
 			}
 		}
 		// Either interaction pushes neighbors aside so the focused case has room:
@@ -334,7 +350,7 @@
 		// placeholder → art crossfade, only once the texture is actually there.
 		// The map multiplies the base color, so easing the tint to white lets
 		// the art come up to full strength without a second mesh.
-		const mixTarget = coverMaterial.map ? 1 : 0;
+		const mixTarget = coverTexture ? 1 : 0;
 		artMix += (mixTarget - artMix) * Math.min(1, delta * 6);
 		coverMaterial.color.lerpColors(placeholderColor, litColor, artMix);
 
@@ -520,6 +536,7 @@
 		scroll.inspecting = false;
 		scroll.inspectSlot = null;
 		coverMaterial.dispose();
+		blankCover.dispose();
 		bookletBackMaterial.dispose();
 		cardMaterial.dispose();
 		tTexture?.dispose();

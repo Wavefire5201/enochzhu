@@ -430,11 +430,34 @@ export async function createGlyphRenderer(
 		}
 		raf = requestAnimationFrame(frame);
 	};
-	raf = requestAnimationFrame(frame);
 
-	const stop = (): void => {
-		cancelAnimationFrame(raf);
+	// The loop only earns its cost while the hero is actually on screen: scrolled
+	// past, or in a background tab, it is pure GPU burn behind whatever the
+	// visitor is looking at. Resuming rebases `last` so the flow time and eased
+	// pointer continue from where they stopped rather than jumping forward by
+	// however long the pause lasted.
+	let onScreen = true;
+	const start = (): void => {
+		if (raf !== 0 || destroyed) return;
+		last = performance.now();
+		raf = requestAnimationFrame(frame);
 	};
+	const stop = (): void => {
+		if (raf === 0) return;
+		cancelAnimationFrame(raf);
+		raf = 0;
+	};
+	const sync = (): void => {
+		if (onScreen && !document.hidden) start();
+		else stop();
+	};
+	const visibility = new IntersectionObserver((entries) => {
+		onScreen = entries[entries.length - 1].isIntersecting;
+		sync();
+	});
+	visibility.observe(canvas);
+	document.addEventListener("visibilitychange", sync);
+	sync();
 
 	return {
 		setParams(p: GlyphParams): void {
@@ -448,6 +471,8 @@ export async function createGlyphRenderer(
 			stop();
 			clearTimeout(sensorTimer);
 			observer.disconnect();
+			visibility.disconnect();
+			document.removeEventListener("visibilitychange", sync);
 			window.removeEventListener("pointermove", onPointerMove);
 			window.removeEventListener("pointerout", onPointerOut);
 			window.removeEventListener("hero-request-tilt", requestSensors);

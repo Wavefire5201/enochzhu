@@ -6,12 +6,13 @@ export const DEFAULT_HDRI_PATH = `/hdri/${DEFAULT_HDRI_FILE}`;
 
 /** Production wall defaults; the prototype keeps its own selectable fixture. */
 export const DEFAULT_WALL_CASE_MODEL: JewelCaseModel = "charcoal";
-// The pine-attic room as TRUE HDR: pine_attic_8k.exr downsampled to 4K and
-// DWAA-compressed to 8.8MB (oiiotool --resize 4096x2048 --compression dwaa:45).
-// HDR matters here — its bright window becomes a sharp specular glint + bloom on
-// the glass/disc (an SDR jpg clamps that away and the reflections go flat). The
-// EXR path desaturates on load (neutralizeEnvironment) to kill the warm cast.
-export const DEFAULT_WALL_HDRI_FILE = "pine_attic-4k-dwaa.exr";
+// The pine-attic room as TRUE HDR, at 1K (1024x512, 1.6MB). HDR matters here —
+// its bright window becomes a sharp specular glint + bloom on the glass/disc (an
+// SDR jpg clamps that away and the reflections go flat). Resolution does not:
+// every use goes through PMREM, whose roughness-0 mip is capped at 256px, so the
+// 4K original (9.3MB) was 6x the download for pixels the prefilter threw away.
+// The EXR path desaturates on load (neutralizeEnvironment) to kill the warm cast.
+export const DEFAULT_WALL_HDRI_FILE = "pine_attic-1k.exr";
 export const DEFAULT_WALL_HDRI_PATH = `/hdri/${DEFAULT_WALL_HDRI_FILE}`;
 
 /**
