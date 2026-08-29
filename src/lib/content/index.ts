@@ -30,7 +30,7 @@ interface MdModule {
  * frontmatter against its schema at build time. An empty directory yields an
  * empty array — the caller renders nothing (PRD §5: no empty shells).
  */
-function load<S extends z.ZodType>(
+export function load<S extends z.ZodType>(
 	modules: Record<string, unknown>,
 	schema: S,
 ): Entry<z.infer<S>>[] {
@@ -118,3 +118,4 @@ export const cats = load(
 	import.meta.glob("/src/content/cats/*.md", { eager: true }),
 	catSchema,
 ).sort(byOrder);
+

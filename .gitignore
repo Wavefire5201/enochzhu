@@ -34,3 +34,7 @@ references/
 
 src/routes/proto/
 .gstack/
+
+# unlisted blog: content and headshot stay local, deployed straight from this machine
+src/content/blog/
+static/blog/

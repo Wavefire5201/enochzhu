@@ -56,7 +56,7 @@
 	{@const t = listening.current}
 	<!-- mobile: full-bleed bar on the very bottom edge; sm+: floating bottom-right -->
 	<div
-		class="pointer-events-none fixed inset-x-0 bottom-0 z-30 sm:inset-x-auto sm:right-5 sm:bottom-3"
+		class="pointer-events-none fixed inset-x-0 bottom-0 z-30 print:hidden sm:inset-x-auto sm:right-5 sm:bottom-3"
 	>
 		<a
 			href={t.url}

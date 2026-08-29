@@ -113,6 +113,21 @@ export const nowSchema = z.object({
 	updated: z.coerce.string().transform((s) => s.replace(/T.*$/, "")),
 });
 
+/**
+ * Unlisted posts served at /p/<slug>. The markdown lives in src/content/blog/,
+ * which is gitignored: the route is public code, the writing never enters git.
+ * Nothing links here — reach a post only by its (deliberately obscure) slug.
+ */
+export const postSchema = z.object({
+	/** blog-level heading shown above every post, e.g. the course-mandated name */
+	series: z.string(),
+	title: z.string(),
+	date: z.coerce.string().transform((s) => s.replace(/T.*$/, "")),
+	/** path under static/, e.g. /blog/headshot.jpg (static/blog/ is gitignored) */
+	headshot: z.string().optional(),
+	description: z.string().optional(),
+});
+
 export const catSchema = z.object({
 	src: z.string(),
 	alt: z.string(),
@@ -128,3 +143,4 @@ export type Thought = z.infer<typeof thoughtSchema>;
 export type Uses = z.infer<typeof usesSchema>;
 export type Music = z.infer<typeof musicSchema>;
 export type Cat = z.infer<typeof catSchema>;
+export type Post = z.infer<typeof postSchema>;
