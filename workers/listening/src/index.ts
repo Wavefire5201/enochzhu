@@ -12,8 +12,17 @@ const CACHE_TTL = 10;
 const TRACK_LIMIT = 12;
 /** album art is immutable — cache it hard once fetched */
 const IMG_CACHE_TTL = 31536000;
-/** only these hosts may be proxied through /img (never an open proxy) */
-const IMG_HOSTS = new Set(["lastfm.freetls.fastly.net"]);
+/**
+ * Only these hosts may be proxied through /img (never an open proxy). Last.fm
+ * serves art from the hyphenated host today and the bare one historically;
+ * both are kept so older feed payloads keep resolving. Deliberately exact
+ * hosts, not a `*.freetls.fastly.net` wildcard — that domain is Fastly's
+ * shared free-TLS endpoint, so a wildcard would proxy unrelated tenants.
+ */
+const IMG_HOSTS = new Set([
+	"lastfm-img.freetls.fastly.net",
+	"lastfm.freetls.fastly.net",
+]);
 
 type VisitEnv = Env & { BLACKLISTED_LOCATIONS?: string };
 
