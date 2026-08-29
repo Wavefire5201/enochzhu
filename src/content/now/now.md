@@ -1,5 +1,5 @@
 ---
-updated: 2026-07-30
+updated: 2026-08-28
 ---
 
 <!--
@@ -12,10 +12,10 @@ recently-played list appear below this prose automatically.
 
 ## currently working on
 
-- this website!
 - sbi portal
-- txtfx
-- some other apps
+- cuaya
+- bell pepper market
+- other websites
 
 ## currently reading
 
@@ -23,5 +23,5 @@ recently-played list appear below this prose automatically.
 
 ## currently learning
 
-- _arabesque no. 1_ by claude debussy
 - _claire de lune_ by claude debussy
+- _nocturne in c# minor_ by frédéric chopin

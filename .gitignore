@@ -33,3 +33,4 @@ references/
 .playwright-mcp/
 
 src/routes/proto/
+.gstack/

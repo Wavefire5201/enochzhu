@@ -231,7 +231,7 @@
 
 			<nav
 				aria-label="sections"
-				class="hidden gap-5 font-mono text-sm text-fg sm:flex"
+				class="hidden gap-5 font-mono text-sm text-fg md:flex"
 			>
 				<a class="link-trace" href="#about">about</a>
 				<a class="link-trace" href="#experience">experience</a>
@@ -245,7 +245,7 @@
 	<!-- bottom-16: stays clear of the fixed now-playing bar when the feed is live -->
 	<nav
 		aria-label="sections"
-		class="absolute bottom-16 left-6 z-10 flex flex-col items-start gap-1 font-mono text-sm text-fg sm:hidden"
+		class="absolute bottom-16 left-6 z-10 flex flex-col items-start gap-1 font-mono text-sm text-fg md:hidden"
 	>
 		<a class="link-trace" href="#about">about</a>
 		<a class="link-trace" href="#experience">experience</a>
@@ -257,7 +257,7 @@
 	<!-- backdrop switcher + photo credit; desktop only — the mobile bottom-left
 	     holds the section nav and the now-playing bar -->
 	<div
-		class="absolute bottom-3 left-6 z-10 hidden sm:block"
+		class="absolute bottom-3 left-6 z-10 hidden md:block"
 		style="opacity:{switcherOpacity}"
 	>
 		<div class="flex items-end gap-2">
@@ -296,7 +296,7 @@
 		<button
 			type="button"
 			onclick={requestTilt}
-			class="absolute right-6 bottom-16 z-10 font-mono text-xs text-fg transition-colors hover:text-ember sm:hidden"
+			class="absolute right-6 bottom-16 z-10 font-mono text-xs text-fg transition-colors hover:text-ember md:hidden"
 		>
 			enable tilt
 		</button>
