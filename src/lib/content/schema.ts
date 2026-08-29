@@ -114,15 +114,15 @@ export const nowSchema = z.object({
 });
 
 /**
- * Blog posts served at /blog/<slug>, listed newest-first at /blog. The markdown
- * lives in src/content/blog/; the filename is the slug.
+ * Notes posts served at /notes/<slug>, listed newest-first at /notes. The markdown
+ * lives in src/content/notes/; the filename is the slug.
  */
 export const postSchema = z.object({
-	/** blog-level heading shown above every post, e.g. the course-mandated name */
+	/** notes-level heading shown above every post, e.g. the course-mandated name */
 	series: z.string(),
 	title: z.string(),
 	date: z.coerce.string().transform((s) => s.replace(/T.*$/, "")),
-	/** path under static/, e.g. /blog/headshot.jpg */
+	/** path under static/, e.g. /notes/headshot.jpg */
 	headshot: z.string().optional(),
 	description: z.string().optional(),
 	draft: z.boolean().default(false),

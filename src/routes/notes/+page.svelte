@@ -5,7 +5,7 @@
 </script>
 
 {#if posts.length > 0}
-	<Seo title="blog — enoch zhu" description="writing by enoch zhu" />
+	<Seo title="notes — enoch zhu" description="writing by enoch zhu" />
 {/if}
 
 <svelte:head>
@@ -18,7 +18,7 @@
 {#if posts.length > 0}
 	<main class="mx-auto max-w-4xl px-6 py-24">
 		<header>
-			<h1 class="font-mono text-sm text-muted">blog</h1>
+			<h1 class="font-mono text-sm text-muted">notes</h1>
 		</header>
 
 		<ul class="mt-10 flex max-w-prose flex-col gap-8">
@@ -26,7 +26,7 @@
 				<li>
 					<a
 						class="link-trace font-display text-xl text-bright"
-						href="/blog/{post.slug}">{post.meta.title}</a
+						href="/notes/{post.slug}">{post.meta.title}</a
 					>
 					<p class="mt-1 font-mono text-xs text-muted">
 						<time datetime={post.meta.date}>{post.meta.date}</time>

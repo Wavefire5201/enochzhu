@@ -25,29 +25,29 @@
 	<meta property="article:published_time" content={post.meta.date} />
 </svelte:head>
 
-<main class="mx-auto max-w-4xl px-6 py-24 print:py-8">
-	<header class="flex items-start justify-between gap-8">
-		<div>
-			<h1 class="font-mono text-sm text-muted">{post.meta.series}</h1>
-			<h2 class="mt-3 font-display text-2xl text-bright">{post.meta.title}</h2>
-			<p class="mt-2 font-mono text-xs text-muted">
-				<time datetime={post.meta.date}>{post.meta.date}</time>
-			</p>
-		</div>
+<main class="mx-auto max-w-prose px-6 py-24 print:py-8">
+	<header class="flex items-center gap-4">
 		{#if post.meta.headshot}
 			<img
 				src={post.meta.headshot}
 				alt="enoch zhu"
-				width="96"
-				height="96"
-				class="h-20 w-20 shrink-0 rounded-sm object-cover sm:h-24 sm:w-24 print:grayscale-0"
+				width="64"
+				height="64"
+				class="h-14 w-14 shrink-0 rounded-sm object-cover grayscale sm:h-16 sm:w-16 print:grayscale-0"
 			/>
 		{/if}
+		<div>
+			<h1 class="font-mono text-xs text-muted">{post.meta.series}</h1>
+			<h2 class="mt-1 font-display text-2xl text-bright">{post.meta.title}</h2>
+			<p class="mt-2 font-mono text-xs text-muted">
+				<time datetime={post.meta.date}>{post.meta.date}</time>
+			</p>
+		</div>
 	</header>
 
 	<article
 		bind:this={articleEl}
-		class="post-prose mt-10 max-w-prose text-base leading-relaxed text-fg"
+		class="post-prose mt-10 text-base leading-relaxed text-fg"
 	>
 		{#if post.body}
 			<post.body />
@@ -55,7 +55,7 @@
 	</article>
 
 	<p class="mt-16 flex items-baseline gap-2 font-mono text-xs text-muted">
-		<a href="/blog" class="link-trace print:hidden">cd ..</a>
+		<a href="/notes" class="link-trace print:hidden">cd ..</a>
 		{#if wordCount !== null}
 			<span class="print:hidden">·</span>
 			<span>{wordCount} words</span>

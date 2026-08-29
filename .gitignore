@@ -24,7 +24,7 @@ vite.config.ts.timestamp-*
 
 # docs
 docs/
-notes/
+/notes/
 references/
 /assets/
 

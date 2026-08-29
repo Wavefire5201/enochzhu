@@ -238,7 +238,7 @@
 				<a class="link-trace" href="#projects">projects</a>
 				<a class="link-trace" href="#contact">contact</a>
 				<a class="link-trace" href="/now">now</a>
-				<a class="link-trace" href="/blog">blog</a>
+				<a class="link-trace" href="/notes">notes</a>
 				<a class="link-trace" href="#music">music</a>
 			</nav>
 		</div>
@@ -254,7 +254,7 @@
 		<a class="link-trace" href="#projects">projects</a>
 		<a class="link-trace" href="#contact">contact</a>
 		<a class="link-trace" href="/now">now</a>
-		<a class="link-trace" href="/blog">blog</a>
+		<a class="link-trace" href="/notes">notes</a>
 		<a class="link-trace" href="#music">music</a>
 	</nav>
 

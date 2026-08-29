@@ -2,9 +2,9 @@
 series: "CS 371p Fall 2026: Enoch Zhu"
 title: "week 1"
 date: 2026-08-28
-headshot: /blog/headshot.jpg
+headshot: /notes/headshot.jpg
 description: "who i am, why i'm here, and the first week of c++"
-draft: true
+draft: false
 ---
 
 Take a few minutes to write a 350-word blog post capturing your experience with this past week’s work. You can approach it however you like, but here are some ideas to get you started:
@@ -16,7 +16,6 @@ Take a few minutes to write a 350-word blog post capturing your experience with 
     Did the programming problem change how you think about solving problems under pressure?
 
     What made you happy this week?
-
 
 ## about me
 
