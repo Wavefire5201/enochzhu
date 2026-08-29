@@ -3,6 +3,16 @@
 
 	const { data } = $props();
 	const post = $derived(data.post);
+
+	let articleEl = $state<HTMLElement>();
+	let wordCount = $state<number | null>(null);
+
+	$effect(() => {
+		const el = articleEl;
+		if (!el) return;
+		const text = el.innerText ?? el.textContent ?? "";
+		wordCount = text.split(/\s+/).filter((word) => word.length > 0).length;
+	});
 </script>
 
 <Seo
@@ -35,14 +45,21 @@
 		{/if}
 	</header>
 
-	<article class="post-prose mt-10 max-w-prose text-base leading-relaxed text-fg">
+	<article
+		bind:this={articleEl}
+		class="post-prose mt-10 max-w-prose text-base leading-relaxed text-fg"
+	>
 		{#if post.body}
 			<post.body />
 		{/if}
 	</article>
 
-	<p class="mt-16 print:hidden">
-		<a href="/" class="link-trace font-mono text-xs text-muted">cd /</a>
+	<p class="mt-16 flex items-baseline gap-2 font-mono text-xs text-muted">
+		<a href="/" class="link-trace print:hidden">cd /</a>
+		{#if wordCount !== null}
+			<span class="print:hidden">·</span>
+			<span>{wordCount} words</span>
+		{/if}
 	</p>
 </main>
 
