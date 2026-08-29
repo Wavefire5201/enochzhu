@@ -5,12 +5,37 @@ export const projectEntries: (z.input<typeof projectSchema> & {
 	slug: string;
 })[] = [
 	{
+		slug: "bell-pepper",
+		title: "bell pepper",
+		description:
+			"farm-to-customer marketplace where local farmers sell produce, independent drivers deliver, and stripe connect pays both",
+		stack: ["react-native", "expo", "next.js", "supabase", "stripe", "typescript"],
+		year: "2026–now",
+		live: "https://bellpepper.shop",
+	},
+	{
+		slug: "chengli-wei",
+		title: "chengli wei",
+		description:
+			"professional site for an optics professor at lipscomb university, covering research, publications, and teaching",
+		stack: ["astro", "tailwind", "netlify"],
+		live: "https://chengliwei.org",
+	},
+	{
 		slug: "clickr",
 		title: "clickr",
 		description: "lightweight autoclicker for wayland",
 		stack: ["rust", "wayland"],
 		year: 2026,
 		github: "https://github.com/Wavefire5201/clickr",
+	},
+	{
+		slug: "cuaya",
+		title: "cuaya",
+		description:
+			"pre-health app with a provider directory built on cms nppes data and a clinical hours tracker tiered against admissions targets",
+		stack: ["react-native", "expo", "hono", "drizzle", "postgresql", "docker", "typescript"],
+		year: "2026–now",
 	},
 	{
 		slug: "dotfiles",
@@ -20,6 +45,15 @@ export const projectEntries: (z.input<typeof projectSchema> & {
 		stack: ["linux", "chezmoi", "bash"],
 		year: "2025-now",
 		github: "https://github.com/Wavefire5201/dotfiles",
+	},
+	{
+		slug: "dp-filtration",
+		title: "dp filtration",
+		description:
+			"marketing site for a new mexico company that builds automated self-cleaning strainers for saltwater disposal and industrial fluid systems",
+		stack: ["astro", "tailwind"],
+		year: 2026,
+		live: "https://dpfiltration.com",
 	},
 	{
 		slug: "duzhe",
@@ -37,6 +71,15 @@ export const projectEntries: (z.input<typeof projectSchema> & {
 		stack: ["swift", "macos"],
 		year: 2026,
 		github: "https://github.com/Wavefire5201/keeber",
+	},
+	{
+		slug: "pedroplusnoah",
+		title: "pedro & noah",
+		description:
+			"campaign site for a ut austin student government president and vice president campaign",
+		stack: ["next.js", "tailwind", "drizzle", "postgresql"],
+		year: 2026,
+		live: "https://pedroplusnoah.com",
 	},
 	{
 		slug: "private-cloud",
@@ -63,6 +106,15 @@ export const projectEntries: (z.input<typeof projectSchema> & {
 		stack: ["typescript", "react-native", "expo"],
 		year: 2026,
 		github: "https://github.com/Wavefire5201/rewind",
+	},
+	{
+		slug: "signature-steel",
+		title: "signature steel structures",
+		description:
+			"marketing site for a central texas steel builder doing barndominiums, metal buildings, and fabrication",
+		stack: ["astro", "tailwind", "netlify"],
+		year: 2026,
+		live: "https://signaturesteelstructures.com",
 	},
 	{
 		slug: "sbi-portal",

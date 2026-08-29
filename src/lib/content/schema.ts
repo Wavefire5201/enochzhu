@@ -56,6 +56,8 @@ export const aboutSchema = z.object({
 				link: z.string().optional(),
 				/** short annotation shown beside the org, e.g. "i made this website" */
 				comment: z.string().optional(),
+				/** one or two sentences on what the work actually was */
+				description: z.string().optional(),
 			}),
 		)
 		.default([]),

@@ -43,6 +43,11 @@
 						{#if item.location}
 							<p class="mt-1 font-mono text-xs text-muted">{item.location}</p>
 						{/if}
+						{#if item.description}
+							<p class="mt-3 max-w-prose text-sm leading-relaxed text-muted">
+								{item.description}
+							</p>
+						{/if}
 					</div>
 					<time class="font-mono text-xs text-muted">{item.period}</time>
 

@@ -7,16 +7,21 @@ experience:
   - role: swe intern
     organization: icelis global
     period: summer 2025
+    location: doha, qatar (remote)
     link: https://icelisglobal.com/
+    description: "built a time-tracking app (react, firebase) that now runs payroll for 50+ people, an esg reporting platform that generates gri-compliant reports with next.js and llamaindex, and a rag chatbot over 100+ regulatory pdfs."
   - role: swe intern
     organization: bell flight
     period: 2023–2024
+    location: fort worth, texas
     link: https://www.bellflight.com/
+    description: "migrated a legacy apache solr / .net search app to a new production server and wrote a multi-threaded indexer that cut reindexing time by 90% with zero downtime. also automated 1,000+ customer access updates in python and trained 300+ agents on a cisco–salesforce integration."
   - role: director of external technologies
     organization: sustainable building initiative (sbi)
     comment: i made this website!
-    period: 2024–now
+    period: 2024–2026
     link: https://utsbi.org/
+    description: "lead a 12-person tech team shipping internal tools for 5 departments and 70+ members: the public site, a client/team portal, and automation for a $25m+ project portfolio."
 sections:
   - label: education
     text: |-
