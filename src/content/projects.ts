@@ -9,7 +9,14 @@ export const projectEntries: (z.input<typeof projectSchema> & {
 		title: "bell pepper",
 		description:
 			"farm-to-customer marketplace where local farmers sell produce, independent drivers deliver, and stripe connect pays both",
-		stack: ["react-native", "expo", "next.js", "supabase", "stripe", "typescript"],
+		stack: [
+			"react-native",
+			"expo",
+			"next.js",
+			"supabase",
+			"stripe",
+			"typescript",
+		],
 		year: "2026–now",
 		live: "https://bellpepper.shop",
 	},
@@ -19,6 +26,7 @@ export const projectEntries: (z.input<typeof projectSchema> & {
 		description:
 			"professional site for an optics professor at lipscomb university, covering research, publications, and teaching",
 		stack: ["astro", "tailwind", "netlify"],
+		year: 2020,
 		live: "https://chengliwei.org",
 	},
 	{
@@ -34,7 +42,15 @@ export const projectEntries: (z.input<typeof projectSchema> & {
 		title: "cuaya",
 		description:
 			"pre-health app with a provider directory built on cms nppes data and a clinical hours tracker tiered against admissions targets",
-		stack: ["react-native", "expo", "hono", "drizzle", "postgresql", "docker", "typescript"],
+		stack: [
+			"react-native",
+			"expo",
+			"hono",
+			"drizzle",
+			"postgresql",
+			"docker",
+			"typescript",
+		],
 		year: "2026–now",
 	},
 	{
