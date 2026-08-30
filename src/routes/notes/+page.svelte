@@ -25,12 +25,12 @@
 			{#each posts as post (post.slug)}
 				<li>
 					<a
-						class="link-trace font-display text-xl text-bright"
+						class="link-trace font-display text-xl leading-none text-bright"
 						href="/notes/{post.slug}">{post.meta.title}</a
 					>
-					<p class="mt-1 font-mono text-xs text-muted">
+					<p class="mt-2.5 font-mono text-xs text-muted">
 						<time datetime={post.meta.date}>{post.meta.date}</time>
-						· {post.meta.series}
+						・ {post.meta.series}
 					</p>
 					{#if post.meta.description}
 						<p class="mt-2 text-base leading-relaxed text-fg">

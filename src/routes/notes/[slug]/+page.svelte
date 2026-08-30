@@ -26,15 +26,21 @@
 </svelte:head>
 
 <main class="mx-auto max-w-prose px-6 py-24 print:py-8">
-	<header class="flex items-center gap-4">
+	<header class="grid grid-cols-[auto_1fr] items-stretch gap-4">
 		{#if post.meta.headshot}
-			<img
-				src={post.meta.headshot}
-				alt="enoch zhu"
-				width="64"
-				height="64"
-				class="h-14 w-14 shrink-0 rounded-sm object-cover grayscale sm:h-16 sm:w-16 print:grayscale-0"
-			/>
+			<!-- square that takes its height from the text column, so the photo's
+			     top and bottom meet the series line and the date. grid, not flex:
+			     flex sizes the main axis before stretching, so aspect-ratio would
+			     have nothing to derive the width from -->
+			<div class="relative aspect-square h-full">
+				<img
+					src={post.meta.headshot}
+					alt="enoch zhu"
+					width="96"
+					height="96"
+					class="absolute inset-0 h-full w-full rounded-sm object-cover print:grayscale-0"
+				/>
+			</div>
 		{/if}
 		<div>
 			<h1 class="font-mono text-xs text-muted">{post.meta.series}</h1>
@@ -57,7 +63,7 @@
 	<p class="mt-16 flex items-baseline gap-2 font-mono text-xs text-muted">
 		<a href="/notes" class="link-trace print:hidden">cd ..</a>
 		{#if wordCount !== null}
-			<span class="print:hidden">·</span>
+			<span class="print:hidden">・</span>
 			<span>{wordCount} words</span>
 		{/if}
 	</p>
