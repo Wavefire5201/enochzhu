@@ -54,7 +54,7 @@
 	<meta property="og:image" content="{SITE}/og.jpg" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
-	<meta property="og:image:alt" content="enoch zhu — cs @ ut austin" />
+	<meta property="og:image:alt" content="enoch zhu ・ cs @ ut austin" />
 
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:image" content="{SITE}/og.jpg" />

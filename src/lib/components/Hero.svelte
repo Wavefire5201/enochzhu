@@ -237,9 +237,9 @@
 				<a class="link-trace" href="#experience">experience</a>
 				<a class="link-trace" href="#projects">projects</a>
 				<a class="link-trace" href="#contact">contact</a>
+				<a class="link-trace" href="#music">music</a>
 				<a class="link-trace" href="/now">now</a>
 				<a class="link-trace" href="/notes">notes</a>
-				<a class="link-trace" href="#music">music</a>
 			</nav>
 		</div>
 	</div>
@@ -253,9 +253,9 @@
 		<a class="link-trace" href="#experience">experience</a>
 		<a class="link-trace" href="#projects">projects</a>
 		<a class="link-trace" href="#contact">contact</a>
+		<a class="link-trace" href="#music">music</a>
 		<a class="link-trace" href="/now">now</a>
 		<a class="link-trace" href="/notes">notes</a>
-		<a class="link-trace" href="#music">music</a>
 	</nav>
 
 	<!-- backdrop switcher + photo credit; desktop only — the mobile bottom-left

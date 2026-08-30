@@ -26,8 +26,8 @@
 </script>
 
 <Seo
-	title="enoch zhu · cs @ ut austin"
-	description="enoch zhu · cs @ ut austin. projects and photos."
+	title="enoch zhu ・ cs @ ut austin"
+	description="enoch zhu ・ cs @ ut austin. projects and photos."
 />
 
 <svelte:head>

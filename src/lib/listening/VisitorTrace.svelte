@@ -33,7 +33,7 @@
 	<p class="mt-6 font-mono text-xs text-muted">
 		you're visitor no. {trace.count.toLocaleString()}
 		{#if trace.last}
-			<span class="text-line">·</span> someone was here {ago(
+			<span class="text-line">・</span> someone was here {ago(
 				trace.last.t,
 			)}{trace.last.place ? ` from ${trace.last.place.toLowerCase()}` : ""}
 		{/if}

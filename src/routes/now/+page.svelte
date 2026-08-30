@@ -22,7 +22,7 @@
 		<header>
 			<h1 class="font-mono text-sm text-muted">now</h1>
 			<p class="mt-2 font-mono text-xs text-muted">
-				updated {now.meta.updated} ·
+				updated {now.meta.updated} ・
 				<a
 					class="italic link-trace"
 					href="https://nownownow.com/about"

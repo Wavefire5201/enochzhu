@@ -81,7 +81,7 @@
 							{/if}
 						</h3>
 						<p class="font-mono text-xs text-muted">
-							{[entry.meta.artist, entry.meta.year].filter(Boolean).join(" · ")}
+							{[entry.meta.artist, entry.meta.year].filter(Boolean).join(" ・ ")}
 						</p>
 						{#if entry.meta.note}
 							<p class="mt-1 text-xs leading-relaxed text-fg">

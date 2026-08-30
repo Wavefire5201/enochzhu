@@ -207,7 +207,7 @@
 						{/if}
 					</h3>
 					<p class="font-mono text-xs text-muted">
-						{[album.artist, album.year].filter(Boolean).join(" · ")}
+						{[album.artist, album.year].filter(Boolean).join(" ・ ")}
 					</p>
 					{#if album.note}
 						<p class="mt-1 text-xs leading-relaxed text-fg text-pretty">

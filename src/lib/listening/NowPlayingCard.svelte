@@ -41,7 +41,7 @@
 			</p>
 			<p class="mt-1 truncate font-display text-base text-bright">{t.name}</p>
 			<p class="truncate font-mono text-xs text-muted">
-				{t.artist}{t.album ? ` · ${t.album}` : ""}
+				{t.artist}{t.album ? ` ・ ${t.album}` : ""}
 			</p>
 		</div>
 	</a>
