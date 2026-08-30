@@ -1,21 +1,15 @@
 ---
 series: "CS 371p Fall 2026: Enoch Zhu"
 title: "week 1"
-date: 2026-08-28
+date: 2026-08-29
 headshot: /notes/headshot.jpg
-description: "who i am, why i'm here, and the first week of c++"
+description: "about me, for CS 371p"
 draft: false
 ---
 
-Take a few minutes to write a 350-word blog post capturing your experience with this past week’s work. You can approach it however you like, but here are some ideas to get you started:
-
-    Which concept from this week surprised you, challenged you, or finally “clicked”?
-
-    How did the collaborative quizzes help you understand the material - or show you what you still need to work on?
-
-    Did the programming problem change how you think about solving problems under pressure?
-
-    What made you happy this week?
+<script>
+	import Repo from "$lib/components/Repo.svelte";
+</script>
 
 ## about me
 
@@ -23,8 +17,9 @@ Hi everyone. My name is Enoch Zhu and I have lived in many different places thro
 
 ## this week
 
-Like I mentioned earlier, it was the ability to create operator functions on classes. When I learned some basic C++ years ago, I always thought the `<<` and `>>` operators being used for `cout` and `cin` was interesting, but never looked into exactly how it worked underneath.
+Like I mentioned earlier, the ability to create operator functions on classes surprised me. Maybe it's because other languages like Python or Java don't have this feature, or I just never knew about it. When I learned some basic C++ years ago, I always thought the `<<` and `>>` operators being used for `cout` and `cin` was interesting, but never looked into exactly how it worked underneath. The collaborative quizzes in class helped me refresh the materials learned from previous lectures and helped clear confusions that I had. The programming problem assigned this Wednesday was trivial, so I do not think it made me be under pressure while solving it.
 
 ## pick of the week
 
-something relevant to software engineering.
+<Repo url="https://github.com/cactus-compute/needle"/>
+I found this project a few weeks ago and I thought it was really interesting because of the size of the model. The tool calling nature of this model can give IoT and mobile devices the ability to run structured and tool calls instead of relying on third party infrastructure and internet connection.
