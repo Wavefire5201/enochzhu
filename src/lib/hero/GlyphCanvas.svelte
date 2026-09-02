@@ -33,6 +33,12 @@
 		renderer?.setParams(params);
 	});
 
+	// the renderer takes the initial charset from its options; this keeps a later
+	// prop change honoured too, without tearing the gl context down
+	$effect(() => {
+		if (charset !== undefined) void renderer?.setCharset(charset);
+	});
+
 	onMount(() => {
 		let cancelled = false;
 		(async () => {
