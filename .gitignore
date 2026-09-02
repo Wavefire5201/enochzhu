@@ -24,6 +24,9 @@ vite.config.ts.timestamp-*
 
 # docs
 docs/
+# anchored: an unanchored `notes/` also matches src/routes/notes, src/content/notes
+# and static/notes, and tailwind v4's source scanner honours .gitignore — every
+# class used only on the notes pages silently stops being generated
 /notes/
 references/
 /assets/
