@@ -7,7 +7,7 @@ export interface HeroPair {
 	 * Stills of the tuned glyph render for the static <img> layer (the LCP
 	 * element and every fallback path). Two widths served via srcset — the
 	 * glyph texture compresses poorly, so mobile must get the small file.
-	 * Regenerate with scripts/capture-poster.mjs after retuning.
+	 * Regenerate with scripts/hero/capture-posters.mjs after retuning.
 	 */
 	poster: { small: string; large: string };
 	/** width / height of the source photograph */
@@ -24,25 +24,15 @@ export interface HeroPair {
 
 /**
  * Curated (photo, depth map) pairs. Swapping or adding a pair is data, not
- * code: drop the photo in static/hero/, run scripts/depth/generate-depth.py
- * and scripts/capture-poster.mjs, add an entry here — and its `credit`.
+ * code: add the wallpaper url to scripts/hero/input.txt and run
+ * scripts/hero/backdrops.py, which crops the photo, builds its depth map and
+ * writes the entry below; then scripts/hero/capture-posters.mjs for the
+ * poster stills. See scripts/hero/README.md.
  *
  * To attribute: add `credit: { name: "Jane Doe", url: "https://unsplash.com/photos/…" }`
  * to a pair below; it appears bottom-left over the hero automatically.
  */
 export const heroPairs: HeroPair[] = [
-	{
-		id: "fog-forest",
-		label: "fog forest",
-		photo: "/hero/fog-forest.jpeg",
-		poster: {
-			small: "/hero/fog-forest-poster-800.webp",
-			large: "/hero/fog-forest-poster-1600.webp",
-		},
-		depth: "/hero/depth/fog-forest.png",
-		aspect: 1920 / 800,
-		focus: [0.5, 0.5],
-	},
 	{
 		id: "mountain",
 		label: "mountain",
@@ -76,19 +66,67 @@ export const heroPairs: HeroPair[] = [
 		},
 	},
 	{
-		id: "rain-city",
-		label: "rain city",
-		photo: "/hero/rain-city.jpeg",
+		id: "blossom",
+		label: "blossom",
+		photo: "/hero/blossom.jpeg",
 		poster: {
-			small: "/hero/rain-city-poster-800.webp",
-			large: "/hero/rain-city-poster-1600.webp",
+			small: "/hero/blossom-poster-800.webp",
+			large: "/hero/blossom-poster-1600.webp",
 		},
-		depth: "/hero/depth/rain-city.png",
+		depth: "/hero/depth/blossom.png",
 		aspect: 1920 / 800,
 		focus: [0.5, 0.5],
 		credit: {
-			name: "kevin bosc",
-			url: "https://unsplash.com/photos/4e9eeHdiBi0?utm_source=enochzhu&utm_medium=referral",
+			name: "jessica kramer",
+			url: "https://unsplash.com/photos/AZTTuralYco?utm_source=enochzhu&utm_medium=referral",
+		},
+	},
+	{
+		id: "gapstow-bridge",
+		label: "gapstow bridge",
+		photo: "/hero/gapstow-bridge.jpeg",
+		poster: {
+			small: "/hero/gapstow-bridge-poster-800.webp",
+			large: "/hero/gapstow-bridge-poster-1600.webp",
+		},
+		depth: "/hero/depth/gapstow-bridge.png",
+		aspect: 1920 / 800,
+		focus: [0.5, 0.5],
+		credit: {
+			name: "juan di nella",
+			url: "https://unsplash.com/photos/ne1X1c9M0Hg?utm_source=enochzhu&utm_medium=referral",
+		},
+	},
+	{
+		id: "snow-peak",
+		label: "snow peak",
+		photo: "/hero/snow-peak.jpeg",
+		poster: {
+			small: "/hero/snow-peak-poster-800.webp",
+			large: "/hero/snow-peak-poster-1600.webp",
+		},
+		depth: "/hero/depth/snow-peak.png",
+		aspect: 1920 / 800,
+		focus: [0.5, 0.5],
+		credit: {
+			name: "slava auchynnikau",
+			url: "https://unsplash.com/photos/Z4g5S4sksPQ?utm_source=enochzhu&utm_medium=referral",
+		},
+	},
+	{
+		id: "red-flowers",
+		label: "red flowers",
+		photo: "/hero/red-flowers.jpeg",
+		poster: {
+			small: "/hero/red-flowers-poster-800.webp",
+			large: "/hero/red-flowers-poster-1600.webp",
+		},
+		depth: "/hero/depth/red-flowers.png",
+		aspect: 1920 / 800,
+		focus: [0.5, 0.5],
+		credit: {
+			name: "mariano baraldi",
+			url: "https://unsplash.com/photos/oWljDFJCVAs?utm_source=enochzhu&utm_medium=referral",
 		},
 	},
 ];

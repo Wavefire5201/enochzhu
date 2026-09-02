@@ -9,7 +9,14 @@
 			// same refresh-scoped image. Selected on every page — the 404/fog pages
 			// rotate through the same pool as the hero. Avoid an immediate repeat.
 			document.documentElement.classList.add("js");
-			const pairs = ["fog-forest", "mountain", "forest-road", "rain-city"];
+			const pairs = [
+				"mountain",
+				"forest-road",
+				"blossom",
+				"gapstow-bridge",
+				"snow-peak",
+				"red-flowers",
+			];
 			let previous = null;
 			try {
 				previous = sessionStorage.getItem("hero-pair");
