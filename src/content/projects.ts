@@ -143,6 +143,15 @@ export const projectEntries: (z.input<typeof projectSchema> & {
 		featured: true,
 	},
 	{
+		slug: "silicon-valley-foodie",
+		title: "silicon valley foodie",
+		description:
+			"editorial site for a silicon valley food publication with restaurant reviews, eating guides, annual awards, and a weekly newsletter",
+		stack: ["astro", "sanity", "tailwind", "netlify"],
+		year: 2026,
+		live: "https://siliconvalleyfoodie.com",
+	},
+	{
 		slug: "txtfx",
 		title: "txtfx",
 		description: "make cool ascii backgrounds",
