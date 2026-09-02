@@ -1,4 +1,9 @@
 @import "tailwindcss";
+
+/* src/routes/proto/ is gitignored, and tailwind v4's automatic source detection
+   skips anything git ignores — without this the proto pages render unstyled.
+   @source opts a path back in explicitly. */
+@source "./routes/proto";
 @import "@fontsource-variable/eb-garamond/wght.css";
 @import "@fontsource-variable/eb-garamond/wght-italic.css";
 @import "@fontsource/commit-mono/400.css";
