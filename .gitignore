@@ -36,5 +36,9 @@ references/
 .playwright-mcp/
 
 src/routes/proto/
-.gstack/
 
+# hero pipeline previews (scripts/hero/backdrops.py --compare)
+scripts/hero/out/
+
+# proto depth-model comparison maps (scripts/hero, throwaway)
+static/hero/depth/proto/

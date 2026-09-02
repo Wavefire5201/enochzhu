@@ -1,0 +1,26 @@
+# one backdrop per line:
+#
+#   <url> | <id> | <label> [| focus=x,y] [| credit=Name]
+#
+# <url>   an unsplash photo page (…/photos/<slug>-<id> or …/photos/<id>),
+#         a wallhaven page (https://wallhaven.cc/w/<id>), or a direct image url
+# <id>    filename stem — static/hero/<id>.jpeg + static/hero/depth/<id>.png
+# <label> what the backdrop switcher shows; lowercase, like the rest of the site
+# focus=  normalised focal point kept when the source is cropped to 1920x800,
+#         same idea as css object-position. default 0.5,0.5
+# credit= override the scraped photographer name (or add one to a direct url)
+#
+# blank lines and lines starting with # are skipped. a run is idempotent: a
+# photo whose static/hero/<id>.jpeg already exists is not re-downloaded, only
+# its depth map is rebuilt. pass --force to start over.
+
+https://unsplash.com/photos/AZTTuralYco | blossom | blossom
+https://unsplash.com/photos/ne1X1c9M0Hg | gapstow-bridge | gapstow bridge
+https://unsplash.com/photos/Z4g5S4sksPQ | snow-peak | snow peak
+https://unsplash.com/photos/oWljDFJCVAs | red-flowers | red flowers
+
+# more shapes, for reference:
+#
+# https://unsplash.com/photos/a-foggy-forest-mqpGa3H_w7M | fog-forest | fog forest | focus=0.5,0.35
+# https://wallhaven.cc/w/9dwlox | neon-alley | neon alley
+# https://example.com/wall.jpg | studio | studio | credit=Someone
