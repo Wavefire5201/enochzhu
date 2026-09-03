@@ -42,3 +42,7 @@ scripts/hero/out/
 
 # proto depth-model comparison maps (scripts/hero, throwaway)
 static/hero/depth/proto/
+
+# Python bytecode from scripts/ — never belongs in the repo
+__pycache__/
+*.pyc
