@@ -22,7 +22,7 @@
 	let inputEl = $state<HTMLInputElement>();
 	let scrollEl = $state<HTMLDivElement>();
 
-	let pdfPath = $state("/Zhu_Enoch_CV.pdf");
+	let pdfPath = $state("/Zhu_Enoch_Resume.pdf");
 
 	const PROMPT = "visitor@enochzhu:~$";
 

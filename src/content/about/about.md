@@ -71,5 +71,5 @@ links:
   github: https://github.com/Wavefire5201
   linkedin: https://linkedin.com/in/enochzhu1
   email: mailto:me@enochzhu.com
-  cv: /Zhu_Enoch_CV.pdf
+  resume: /Zhu_Enoch_Resume.pdf
 ---
