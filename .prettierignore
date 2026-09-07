@@ -14,3 +14,6 @@ static
 
 # workers/ is a separate sub-project with its own tooling — don't format it from here
 workers
+
+# Gitignored local experiments
+src/routes/proto

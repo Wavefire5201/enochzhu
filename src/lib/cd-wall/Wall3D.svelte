@@ -1,51 +1,47 @@
 <script lang="ts">
 	import { Canvas } from "@threlte/core";
-	import { onDestroy, onMount, untrack } from "svelte";
+	import { onMount } from "svelte";
 	import { WebGLRenderer } from "three";
 	import type { CdAlbum } from "./albums";
 	import { albumIndexAt } from "./layout";
-	import { PreviewPlayer } from "./preview-player.svelte";
+	import type { PreviewPlayer } from "./preview-player.svelte";
 	import Scene from "./Scene.svelte";
 	import { WallScroll } from "./scroll";
 
 	interface Props {
 		albums: CdAlbum[];
 		openedSlot: number | null;
-		onopen: (slot: number | null) => void;
+		onopen: (slot: number | null, restoreFocus?: boolean) => void;
 		onready: () => void;
 		onfail: () => void;
+		player: PreviewPlayer;
 	}
 
-	const { albums, openedSlot, onopen, onready, onfail }: Props = $props();
+	const { albums, openedSlot, onopen, onready, onfail, player }: Props =
+		$props();
 
 	const scroll = new WallScroll();
-	// The player is owned here, above CdActions, so opening a case fades the
-	// looping preview in and closing fades it out even as the panel unmounts.
-	const player = new PreviewPlayer();
-	onDestroy(() => player.destroy());
-
-	$effect(() => {
-		if (openedSlot === null) {
-			untrack(() => player.close());
-			return;
-		}
-		const album = albums[albumIndexAt(openedSlot, albums.length)];
-		// untrack: the player reads its own reactive state (previewUrl) and load()
-		// writes it, so tracking here would loop the effect and spawn audio nodes.
-		untrack(() => {
-			player.open(); // mark open; plays at once if the clip is already resolved
-			void player.load(album); // resolve the preview, auto-playing when ready
-		});
-	});
 
 	let host = $state<HTMLElement>();
 	let hovered = $state<{ album: CdAlbum; slot: number } | null>(null);
 	let pressed = false;
 	let grabbing = $state(false);
+	let onScreen = $state(false);
+	let documentVisible = $state(true);
+	const active = $derived(onScreen && documentVisible);
 
 	onMount(() => {
 		const el = host;
 		if (!el) return;
+		const visibility = new IntersectionObserver(([entry]) => {
+			onScreen = entry.isIntersecting;
+		});
+		visibility.observe(el);
+		const syncVisibility = () => {
+			documentVisible = !document.hidden;
+		};
+		syncVisibility();
+		document.addEventListener("visibilitychange", syncVisibility);
 		// horizontal wheel/trackpad intent drives the row; vertical wheel keeps
 		// scrolling the page — an embedded section must not hijack it. Manual
 		// listener because Svelte registers `onwheel` passively.
@@ -83,9 +79,18 @@
 		const onKey = (event: KeyboardEvent) => {
 			if (event.key === "Escape") onopen(null);
 		};
+		// The preview is not a modal: tabbing back to the page closes its scroll lock.
+		const onFocus = (event: FocusEvent) => {
+			if (openedSlot !== null && !el.contains(event.target as Node))
+				onopen(null, false);
+		};
 		window.addEventListener("mousedown", onBackgroundClick);
 		window.addEventListener("keydown", onKey);
+		window.addEventListener("focusin", onFocus);
 		return () => {
+			visibility.disconnect();
+			document.removeEventListener("visibilitychange", syncVisibility);
+			window.removeEventListener("focusin", onFocus);
 			el.removeEventListener("wheel", onWheel);
 			el.removeEventListener("touchmove", onTouchMove);
 			window.removeEventListener("mousedown", onBackgroundClick);
@@ -185,14 +190,16 @@
 	style="touch-action: {openedSlot !== null
 		? 'none'
 		: 'pan-y'}; -webkit-touch-callout: none"
-	aria-hidden="true"
-	onpointerdown={down}
 >
 	<!-- alpha renderer: the canvas clears transparent so the site background
 	     shows through — Threlte's default context is opaque black. It is wrapped
 	     in a mask so the bright reflections dissolve into the page at every edge
 	     instead of hard-cutting at the canvas rectangle. -->
-	<div class="wall-canvas-mask absolute inset-0">
+	<div
+		class="wall-canvas-mask absolute inset-0"
+		aria-hidden="true"
+		onpointerdown={down}
+	>
 		<Canvas
 			dpr={Math.min(2, window.devicePixelRatio)}
 			createRenderer={(canvas) => {
@@ -210,6 +217,7 @@
 			}}
 		>
 			<Scene
+				{active}
 				{albums}
 				perspectiveWall
 				{scroll}
@@ -224,6 +232,25 @@
 		</Canvas>
 	</div>
 
+	{#if openedSlot !== null}
+		<button
+			type="button"
+			data-close-preview
+			class="absolute right-[13%] top-4 z-10 flex size-11 items-center justify-center text-muted hover:text-bright"
+			aria-label="Close preview"
+			onclick={() => onopen(null)}
+		>
+			<svg
+				aria-hidden="true"
+				class="size-4"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.5"><path d="m6 6 12 12M6 18 18 6" /></svg
+			>
+		</button>
+	{/if}
+
 	<!-- the payoff: an opened case squares up center-stage while the row parts
 	     around it, and its details arrive in the space cleared to its right.
 	     Sits OUTSIDE the mask so the type stays crisp over the bright glass. -->
@@ -234,6 +261,9 @@
 		     On mobile, it centers at the bottom (below the case).
 		     On desktop, it floats on the right of the CD case. -->
 		<div
+			inert={openedSlot === null ||
+				player.inspecting ||
+				player.openAmount < 0.9}
 			class="pointer-events-none absolute z-10 flex flex-row items-center gap-6
 			       inset-x-0 bottom-0 justify-center pl-0
 			       sm:inset-y-0 sm:bottom-0 sm:left-1/2 sm:right-auto sm:justify-start sm:pl-[12.5rem] md:pl-[14.5rem] lg:pl-[16.5rem]"
@@ -436,7 +466,11 @@
 		appearance: none;
 		-webkit-appearance: none;
 		background: transparent;
-		outline: none;
+	}
+
+	.flat-slider:focus-visible {
+		outline: 2px solid var(--color-ember);
+		outline-offset: 2px;
 	}
 
 	@media (min-width: 640px) {

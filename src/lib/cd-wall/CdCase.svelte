@@ -167,14 +167,17 @@
 		ctx.fillText(text, canvas.width / 2, canvas.height / 2);
 	}
 
-	function updateTextCanvases() {
+	function updateTextCanvases(
+		style = discStyle,
+		colorMode = ditherOptions?.colorMode,
+	) {
 		const current = album;
-		if (!current || discStyle !== "dither") return;
+		if (!current || style !== "dither") return;
 
 		let color = "#f5f5f5";
-		if (ditherOptions?.colorMode === "green") color = "#8bac0f";
-		else if (ditherOptions?.colorMode === "amber") color = "#ffb000";
-		else if (ditherOptions?.colorMode === "album") color = current.color;
+		if (colorMode === "green") color = "#8bac0f";
+		else if (colorMode === "amber") color = "#ffb000";
+		else if (colorMode === "album") color = current.color;
 
 		if (tCanvas && tTexture) {
 			drawTextToCanvas(tCanvas, current.title.toUpperCase(), color);
@@ -192,8 +195,6 @@
 	}
 
 	$effect(() => {
-		discStyle;
-		ditherOptions?.colorMode;
 		updateTextCanvases();
 	});
 

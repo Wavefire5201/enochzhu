@@ -16,6 +16,8 @@ export interface VideoCache {
 	keep(id: string): void;
 	/** apply play/pause from recent keeps; call once per frame */
 	sweep(): void;
+	/** Suspend decoding while the entire wall or document is out of view. */
+	setActive(active: boolean): void;
 	dispose(): void;
 }
 
@@ -27,6 +29,7 @@ export function createVideoCache(anisotropy: number): VideoCache {
 	const lastWanted = new Map<string, number>();
 	let frame = 0;
 	let disposed = false;
+	let active = true;
 
 	function ensure(album: CdAlbum) {
 		if (!album.video) return null;
@@ -38,7 +41,9 @@ export function createVideoCache(anisotropy: number): VideoCache {
 			video.muted = true;
 			video.defaultMuted = true;
 			video.playsInline = true;
-			video.autoplay = true;
+			// Playback belongs to the visibility lifecycle, including videos that
+			// finish buffering after the wall has already left the viewport.
+			video.autoplay = false;
 			video.preload = "auto";
 			video.crossOrigin = "anonymous"; // ready for a CDN origin later
 			// a 1px hidden element in the DOM: detached videos play in Chrome but
@@ -47,7 +52,7 @@ export function createVideoCache(anisotropy: number): VideoCache {
 				"position:fixed;left:-10px;top:-10px;width:1px;height:1px;opacity:0;pointer-events:none";
 			document.body.appendChild(video);
 			// muted autoplay is allowed; a rejected promise is harmless
-			video.play().catch(() => {});
+			if (active) video.play().catch(() => {});
 			const texture = new VideoTexture(video);
 			texture.colorSpace = SRGBColorSpace;
 			texture.anisotropy = anisotropy;
@@ -58,6 +63,12 @@ export function createVideoCache(anisotropy: number): VideoCache {
 	}
 
 	return {
+		setActive(value) {
+			active = value;
+			if (!active) {
+				for (const { video } of entries.values()) video.pause();
+			}
+		},
 		get(album) {
 			const entry = ensure(album);
 			// HAVE_CURRENT_DATA: a frame exists to sample; before that the still
@@ -68,7 +79,7 @@ export function createVideoCache(anisotropy: number): VideoCache {
 			lastWanted.set(id, frame);
 		},
 		sweep() {
-			if (disposed) return;
+			if (disposed || !active) return;
 			frame++;
 			for (const [id, { video }] of entries) {
 				// a few frames of grace so play/pause never flickers at the window edge

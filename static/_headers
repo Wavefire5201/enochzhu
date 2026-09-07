@@ -12,13 +12,17 @@
 /_app/immutable/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Static 3D models — large GLBs that never change without a new deploy.
+# Descriptive asset URLs can change between deploys. Keep cached bodies, but
+# revalidate them so a replacement at the same path is picked up.
 /models/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, no-cache
 
-# Hero backdrop images — poster webps and video files, versioned by filename.
+# Hero filenames describe their content; they are not content hashes.
 /hero/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, no-cache
+
+/hdri/*
+  Cache-Control: public, no-cache
 
 # Album art and video textures — content is stable across deploys.
 /music/*

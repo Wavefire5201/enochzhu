@@ -7,7 +7,6 @@
 		Box3,
 		BufferGeometry,
 		CanvasTexture,
-		CircleGeometry,
 		RingGeometry,
 		Color,
 		DoubleSide,
@@ -44,7 +43,6 @@
 		type DiscMaps,
 		type DiscStyle,
 		type HalftoneOptions,
-		pickDiscStyle,
 		type DitherDiscOptions,
 		DEFAULT_DITHER_DISC_OPTIONS,
 	} from "./disc-art";
@@ -60,6 +58,7 @@
 	import { createVideoCache } from "./video-textures";
 
 	interface Props {
+		active?: boolean;
 		albums: CdAlbum[];
 		scroll: WallScroll;
 		openedSlot: number | null;
@@ -159,6 +158,7 @@
 	}
 
 	const {
+		active = true,
 		albums,
 		scroll,
 		openedSlot,
@@ -233,7 +233,7 @@
 	// multiple times
 	interactivity({ filter: (hits) => hits.slice(0, 1) });
 
-	const { renderer, scene, size, camera, autoRender, renderStage } =
+	const { renderer, scene, size, camera, autoRender, mainStage, renderStage } =
 		useThrelte();
 	// Transmission is a screen-space pass. Keep the wall at the same supersampled
 	// resolution as the single-case lab so environment streaks stay visible on
@@ -659,6 +659,8 @@
 	// or (on the live wall) the album of the currently-open case. Only the opened
 	// disc is ever visible, so one shared material is enough. "art"/"halftone"
 	// load the cover, so this is async; the scalar props live in the effect above.
+	// GPU resources are cached imperatively; mutations must not retrigger effects.
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const discMapsCache = new Map<string, DiscMaps>();
 	onDestroy(() => {
 		for (const maps of discMapsCache.values()) {
@@ -1136,6 +1138,19 @@
 	// a lost context can't be recovered mid-scroll — hand over to the DOM strip
 	const handleContextLost = () => onfail();
 	renderer.domElement.addEventListener("webglcontextlost", handleContextLost);
+
+	// Pause the shared stages, including every pooled case and the bloom pass.
+	// Keep the scene mounted so returning to it preserves its position and assets.
+	$effect(() => {
+		videos.setActive(active);
+		if (active) {
+			mainStage.start();
+			renderStage.start();
+		} else {
+			mainStage.stop();
+			renderStage.stop();
+		}
+	});
 
 	useTask((delta) => {
 		scroll.update(delta, performance.now());

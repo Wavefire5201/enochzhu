@@ -35,6 +35,10 @@ references/
 .omc/
 .playwright-mcp/
 
+# Agent-generated review artifacts stay local unless explicitly requested.
+/AUDIT.md
+/scripts/check-audit.mjs
+
 src/routes/proto/
 
 # hero pipeline previews (scripts/hero/backdrops.py --compare)

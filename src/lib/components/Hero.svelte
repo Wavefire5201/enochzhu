@@ -233,11 +233,11 @@
 				aria-label="sections"
 				class="hidden gap-5 font-mono text-sm text-fg md:flex"
 			>
+				<a class="link-trace" href="#music">music</a>
 				<a class="link-trace" href="#about">about</a>
 				<a class="link-trace" href="#experience">experience</a>
 				<a class="link-trace" href="#projects">projects</a>
 				<a class="link-trace" href="#contact">contact</a>
-				<a class="link-trace" href="#music">music</a>
 				<a class="link-trace" href="/now">now</a>
 				<a class="link-trace" href="/notes">notes</a>
 			</nav>
@@ -249,11 +249,11 @@
 		aria-label="sections"
 		class="absolute bottom-16 left-6 z-10 flex flex-col items-start gap-1 font-mono text-sm text-fg md:hidden"
 	>
+		<a class="link-trace" href="#music">music</a>
 		<a class="link-trace" href="#about">about</a>
 		<a class="link-trace" href="#experience">experience</a>
 		<a class="link-trace" href="#projects">projects</a>
 		<a class="link-trace" href="#contact">contact</a>
-		<a class="link-trace" href="#music">music</a>
 		<a class="link-trace" href="/now">now</a>
 		<a class="link-trace" href="/notes">notes</a>
 	</nav>
@@ -261,8 +261,8 @@
 	<!-- backdrop switcher + photo credit; desktop only — the mobile bottom-left
 	     holds the section nav and the now-playing bar -->
 	<div
-		class="absolute bottom-3 left-6 z-10 hidden md:block"
-		style="opacity:{switcherOpacity}"
+		class="backdrop-switcher absolute bottom-3 left-6 z-10 hidden md:block"
+		style="--switcher-opacity:{switcherOpacity}"
 	>
 		<div class="flex items-end gap-2">
 			<span class="font-mono text-[0.65rem] text-muted">backdrop</span>
@@ -272,7 +272,7 @@
 					{#each displayedPairs.slice(1) as p, i (p.id)}
 						<button
 							onclick={() => (pairId = p.id)}
-							class="font-mono text-[0.65rem] text-fg opacity-0 transition-opacity duration-300 hover:text-ember group-hover:opacity-100"
+							class="font-mono text-[0.65rem] text-fg opacity-0 transition-opacity duration-300 hover:text-ember group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:transition-none"
 							style="transition-delay:{(i + 1) * 70}ms">{p.label}</button
 						>
 					{/each}
@@ -308,6 +308,14 @@
 </section>
 
 <style>
+	.backdrop-switcher {
+		opacity: var(--switcher-opacity);
+	}
+
+	.backdrop-switcher:focus-within {
+		opacity: 1;
+	}
+
 	.hero-poster-mask {
 		display: none;
 	}

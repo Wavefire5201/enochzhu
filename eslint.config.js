@@ -15,6 +15,8 @@ export default [
 			"node_modules/",
 			"static/",
 			"workers/",
+			// Gitignored local experiments are not part of the maintained site.
+			"src/routes/proto/",
 			"**/*.md",
 		],
 	},

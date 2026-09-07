@@ -34,6 +34,11 @@ sections:
       - c / c++
       - java
       - bash
+      - sql
+      - go
+      - rust
+      - swift
+      - r
   - label: stack
     items:
       - react
@@ -47,6 +52,13 @@ sections:
       - postgresql
       - supabase
       - apache solr
+      - postgis
+      - pgvector
+      - pgtap
+      - rest apis
+      - hono
+      - stripe connect
+      - firebase
   - label: tools
     items:
       - linux
@@ -54,6 +66,29 @@ sections:
       - cloudflare
       - ros
       - neovim
+      - nginx
+      - traefik
+      - cloudflare dns
+      - tailscale
+      - wireguard
+      - github actions
+      - ci/cd
+  - label: ai / ml
+    items:
+      - rag
+      - hybrid retrieval
+      - cross-encoder reranking
+      - tool-calling agents
+      - mcp
+      - embeddings
+  - label: certs
+    items:
+      - comptia a+ (2023)
+      - giac foundational cybersecurity technologies (2024)
+  - label: spoken
+    items:
+      - mandarin chinese (fluent)
+      - japanese (intermediate)
   - label: interests
     items:
       - self-hosting

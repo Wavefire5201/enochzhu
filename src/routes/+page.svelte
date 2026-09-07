@@ -9,10 +9,11 @@
 	import Projects from "$lib/components/Projects.svelte";
 	import Seo from "$lib/components/Seo.svelte";
 	import { about, music, photos, projects } from "$lib/content";
+	import { jsonLdScript } from "$lib/jsonld";
 
 	// Person structured data for richer search results
 	const jsonld = about
-		? JSON.stringify({
+		? jsonLdScript({
 				"@context": "https://schema.org",
 				"@type": "Person",
 				name: about.meta.name,
@@ -32,9 +33,9 @@
 
 <svelte:head>
 	{#if jsonld}
-		<script type="application/ld+json">
-			{@html jsonld}
-		</script>
+		<!-- The JSON is serialized above and escapes HTML delimiters. -->
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+		{@html jsonld}
 	{/if}
 </svelte:head>
 
@@ -42,6 +43,8 @@
 	{#if about}
 		<Hero about={about.meta} />
 	{/if}
+
+	<Music {music} />
 
 	{#if about}
 		<About about={about.meta} />
@@ -59,6 +62,5 @@
 		<Contact about={about.meta} />
 	{/if}
 
-	<Music {music} />
 	<Footer />
 </main>

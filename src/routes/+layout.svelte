@@ -1,6 +1,5 @@
 <script lang="ts">
 	import "../app.css";
-	import { type Component } from "svelte";
 	import { page } from "$app/state";
 	import NowPlaying from "$lib/listening/NowPlaying.svelte";
 
@@ -9,40 +8,7 @@
 	// canonical/og url follow the current route; everything else is site-wide
 	const SITE = "https://enochzhu.com";
 	const canonical = $derived(SITE + page.url.pathname);
-
-	let Terminal = $state<Component<{ onclose: () => void }> | null>(null);
-	let terminalOpen = $state(false);
-	let restoreFocus: HTMLElement | null = null;
-
-	async function onKeydown(e: KeyboardEvent) {
-		// Terminal feature disabled for now
-		return;
-		/*
-		if (e.key !== "`" || e.metaKey || e.ctrlKey || e.altKey) return;
-		const target = e.target as HTMLElement;
-		if (
-			target instanceof HTMLInputElement ||
-			target instanceof HTMLTextAreaElement ||
-			target.isContentEditable
-		) {
-			return;
-		}
-		e.preventDefault();
-		if (!Terminal) {
-			Terminal = (await import("$lib/terminal/Terminal.svelte")).default;
-		}
-		restoreFocus = document.activeElement as HTMLElement;
-		terminalOpen = true;
-		*/
-	}
-
-	function closeTerminal() {
-		terminalOpen = false;
-		restoreFocus?.focus();
-	}
 </script>
-
-<!-- <svelte:window onkeydown={onKeydown} /> -->
 
 <svelte:head>
 	<link rel="canonical" href={canonical} />
@@ -59,10 +25,6 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:image" content="{SITE}/og.jpg" />
 </svelte:head>
-
-<!-- {#if terminalOpen && Terminal}
-	<Terminal onclose={closeTerminal} />
-{/if} -->
 
 {@render children()}
 

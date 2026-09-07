@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { type Component, onMount } from "svelte";
+	import { type Component, onDestroy, onMount, tick, untrack } from "svelte";
 	import type { CdAlbum } from "./albums";
+	import { albumIndexAt } from "./layout";
+	import { PreviewPlayer } from "./preview-player.svelte";
 	import { DEFAULT_WALL_CASE_MODEL, DEFAULT_WALL_HDRI_PATH } from "./models";
 
 	interface Props {
@@ -12,9 +14,10 @@
 	type WallModule = Component<{
 		albums: CdAlbum[];
 		openedSlot: number | null;
-		onopen: (slot: number | null) => void;
+		onopen: (slot: number | null, restoreFocus?: boolean) => void;
 		onready: () => void;
 		onfail: () => void;
+		player: PreviewPlayer;
 	}>;
 
 	let host = $state<HTMLElement>();
@@ -35,6 +38,42 @@
 	// which on-screen slot has its lid open — a slot, not an album id: the
 	// collection tiles, and every copy of an album must not open at once
 	let openedSlot = $state<number | null>(null);
+	const player = new PreviewPlayer();
+	onDestroy(() => player.destroy());
+	let previewTrigger: HTMLButtonElement | null = null;
+
+	$effect(() => {
+		if (openedSlot === null) {
+			untrack(() => player.close());
+			return;
+		}
+		const album = albums[albumIndexAt(openedSlot, albums.length)];
+		untrack(() => {
+			player.open();
+			void player.load(album);
+		});
+	});
+
+	function open(slot: number | null, restoreFocus = true) {
+		openedSlot = slot;
+		if (slot === null && previewTrigger) {
+			if (restoreFocus) previewTrigger.focus({ preventScroll: true });
+			previewTrigger = null;
+		}
+	}
+
+	function fail() {
+		failed = true;
+		open(null);
+	}
+
+	async function preview(index: number, event: MouseEvent) {
+		previewTrigger = event.currentTarget as HTMLButtonElement;
+		player.unlock(); // keep audio permission inside the user's gesture
+		open(index);
+		await tick();
+		host?.querySelector<HTMLButtonElement>("[data-close-preview]")?.focus();
+	}
 
 	// the imported chunk, held until we actually mount — importing does NOT
 	// create the GL context or start the render loop; assigning Wall3D does
@@ -62,13 +101,15 @@
 				// Fetch during the post-hero warm-up rather than relying on `prefetch`:
 				// some browsers give a prefetch almost no bandwidth. This leaves the
 				// response in the HTTP cache for Three's loaders when the canvas mounts.
-				return fetch(href, { cache: "force-cache" }).then((response) => {
-					if (!response.ok) throw new Error(`failed to warm ${href}`);
-					// `fetch` resolves at response headers. Consume the body before the
-					// renderer mounts so the browser can reuse a complete cache entry,
-					// rather than competing with a second request for the same EXR/GLB.
-					return response.arrayBuffer();
-				});
+				return fetch(href, { signal: AbortSignal.timeout(15_000) }).then(
+					(response) => {
+						if (!response.ok) throw new Error(`failed to warm ${href}`);
+						// `fetch` resolves at response headers. Consume the body before the
+						// renderer mounts so the browser can reuse a complete cache entry,
+						// rather than competing with a second request for the same EXR/GLB.
+						return response.arrayBuffer();
+					},
+				);
 			}),
 		).then(() => {});
 	}
@@ -88,6 +129,7 @@
 		let warmAssets: Promise<void> | null = null;
 		let mountStarted = false;
 		let disposed = false;
+		let loadTimer: ReturnType<typeof setTimeout> | undefined;
 
 		const warmWall = () => {
 			warmAssets ??= prefetchAssets();
@@ -109,11 +151,15 @@
 		const mountWall = async () => {
 			if (mountStarted || disposed) return;
 			mountStarted = true;
+			// A stalled chunk or texture must not leave the content hidden forever.
+			loadTimer = setTimeout(() => {
+				if (!wallReady) fail();
+			}, 20_000);
 			warmWall();
 			await Promise.all([warmAssets, preloadWall()]);
-			if (disposed) return;
+			if (disposed || failed) return;
 			if (preloaded) Wall3D = preloaded;
-			else failed = true;
+			else fail();
 		};
 
 		// Import and download on an idle slice, never in a scroll handler. The EXR
@@ -136,6 +182,7 @@
 
 		return () => {
 			disposed = true;
+			clearTimeout(loadTimer);
 			io?.disconnect();
 			if (warmIdleId !== null) cancelIdle(warmIdleId);
 			if (mountIdleId !== null) cancelIdle(mountIdleId);
@@ -144,15 +191,19 @@
 </script>
 
 {#if albums.length > 0}
-	<div bind:this={host} class="relative">
+	<div bind:this={host} class="relative" class:wall-reserved={canvasIntended}>
 		{#if canvasActive && Wall3D}
-			<Wall3D
-				{albums}
-				{openedSlot}
-				onopen={(slot) => (openedSlot = slot)}
-				onready={() => (wallReady = true)}
-				onfail={() => (failed = true)}
-			/>
+			<svelte:boundary onerror={fail}>
+				<Wall3D
+					{albums}
+					{openedSlot}
+					{player}
+					onopen={open}
+					onready={() => (wallReady = true)}
+					onfail={fail}
+				/>
+				{#snippet failed()}{/snippet}
+			</svelte:boundary>
 		{/if}
 
 		{#if canvasIntended && !failed && !wallReady}
@@ -179,7 +230,7 @@
 			tabindex={stripClipped ? 0 : undefined}
 			aria-label="albums"
 		>
-			{#each albums as album (album.id)}
+			{#each albums as album, index (album.id)}
 				<li class="w-36 shrink-0 snap-start sm:w-44">
 					<img
 						src={album.cover}
@@ -206,6 +257,14 @@
 							{album.title}
 						{/if}
 					</h3>
+					{#if canvasActive && wallReady}
+						<button
+							type="button"
+							class="link-trace my-1 min-h-11 font-mono text-xs text-muted"
+							aria-label="Preview {album.title}"
+							onclick={(event) => preview(index, event)}>preview</button
+						>
+					{/if}
 					<p class="font-mono text-xs text-muted">
 						{[album.artist, album.year].filter(Boolean).join(" ・ ")}
 					</p>
@@ -221,6 +280,16 @@
 {/if}
 
 <style>
+	.wall-reserved {
+		min-height: 28rem;
+	}
+
+	@media (min-width: 640px) {
+		.wall-reserved {
+			min-height: 36rem;
+		}
+	}
+
 	/* parked behind the canvas but still real: zero-clipped, in the tab
 	   order. The moment keyboard focus lands inside, it overlays the wall. */
 	.wall-list-clipped {

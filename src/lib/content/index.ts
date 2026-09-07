@@ -118,4 +118,3 @@ export const cats = load(
 	import.meta.glob("/src/content/cats/*.md", { eager: true }),
 	catSchema,
 ).sort(byOrder);
-

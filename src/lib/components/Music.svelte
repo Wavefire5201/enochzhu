@@ -24,8 +24,8 @@
 <!-- curated taste, not a complete history; empty collection → no section -->
 {#if music.length > 0}
 	<section id="music" class="mx-auto max-w-4xl scroll-mt-8 px-6 py-24">
-		<!-- no section header: the wall is meant to read as an object in the page,
-		     not a labelled list — the immersion is the point -->
+		<!-- Keep the visual wall unlabelled while preserving heading navigation. -->
+		<h2 class="sr-only">music</h2>
 
 		{#if albums.length > 0}
 			<!-- full-bleed breakout: the wall spans the viewport while the
@@ -81,7 +81,9 @@
 							{/if}
 						</h3>
 						<p class="font-mono text-xs text-muted">
-							{[entry.meta.artist, entry.meta.year].filter(Boolean).join(" ・ ")}
+							{[entry.meta.artist, entry.meta.year]
+								.filter(Boolean)
+								.join(" ・ ")}
 						</p>
 						{#if entry.meta.note}
 							<p class="mt-1 text-xs leading-relaxed text-fg">

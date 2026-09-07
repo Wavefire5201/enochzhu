@@ -2,7 +2,7 @@ import type { CdAlbum } from "./albums";
 
 /**
  * Owns the 30-second iTunes preview for the CD wall. It lives ABOVE the controls
- * panel (created by Wall3D / the proto lab, not inside CdActions) so it survives
+ * panel (created by CdWall / the proto lab, not inside CdActions) so it survives
  * the panel's mount/unmount: opening a case fades the clip in and loops it,
  * closing fades it out — and the fade-out completes even as the panel is torn
  * down. The reactive fields back the play button and the ambient volume orb;
@@ -51,6 +51,8 @@ export class PreviewPlayer {
 	#reqId = 0; // cancels a stale in-flight search
 	#wantPlay = false; // true between open() and close(): the case is held open
 	#activeAlbumId: string | null = null;
+	// Playback-position cache is read imperatively, never rendered by Svelte.
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	#positions = new Map<string, number>();
 
 	// one context for the whole wall; the source node is per-element because
