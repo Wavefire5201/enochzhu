@@ -3,7 +3,7 @@ series: "CS 371p Fall 2026: Enoch Zhu"
 title: "week 1"
 date: 2026-08-29
 headshot: /notes/headshot.jpg
-description: "about me, for CS 371p"
+description: "week 1 blog post for CS 371p"
 draft: false
 ---
 
