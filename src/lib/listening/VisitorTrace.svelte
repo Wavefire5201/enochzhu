@@ -9,6 +9,16 @@
 	type Trace = { count: number; last: { t: number; place: string } | null };
 	let trace = $state<Trace | null>(null);
 
+	/** the referrer's origin, or "" — the path is never sent anywhere */
+	function referrerOrigin(): string {
+		if (!document.referrer) return "";
+		try {
+			return new URL(document.referrer).origin;
+		} catch {
+			return "";
+		}
+	}
+
 	function ago(seconds: number): string {
 		const d = Math.max(0, Math.floor(Date.now() / 1000) - seconds);
 		if (d < 60) return "moments ago";
@@ -20,7 +30,12 @@
 	onMount(async () => {
 		if (!LISTENING_ENDPOINT) return;
 		try {
-			const res = await fetch(`${LISTENING_ENDPOINT}visit`);
+			// the worker only ever sees our origin as Referer (cross-origin fetch),
+			// so pass where this page visit actually came from explicitly — the
+			// origin only, never the path, which can carry private query strings
+			const origin = referrerOrigin();
+			const from = origin ? `?from=${encodeURIComponent(origin)}` : "";
+			const res = await fetch(`${LISTENING_ENDPOINT}visit${from}`);
 			if (!res.ok) return;
 			trace = (await res.json()) as Trace;
 		} catch {

@@ -17,6 +17,9 @@
 		"ALLOWED_ORIGINS": "https://enochzhu.com,https://www.enochzhu.com,http://localhost:5173,http://192.168.0.145:5173,https://enochzhu.pages.dev",
 	},
 	// LASTFM_API_KEY is a secret: `wrangler secret put LASTFM_API_KEY`
+	// Visit notifications (optional, off when unset):
+	//   wrangler secret put NTFY_URL     e.g. https://ntfy.sh/<unguessable-topic>
+	//   wrangler secret put NTFY_TOKEN   only for a reserved or self-hosted topic
 	// Ambient visitor trace. Create once, then paste the id below:
 	//   wrangler kv namespace create VISITS
 	"kv_namespaces": [

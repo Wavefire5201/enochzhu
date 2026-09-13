@@ -23,8 +23,25 @@ const IMG_HOSTS = new Set([
 	"lastfm-img.freetls.fastly.net",
 	"lastfm.freetls.fastly.net",
 ]);
+/**
+ * Visit notifications are rate-limited twice over: at most one note per
+ * NOTIFY_BUCKET window (so a burst of distinct visitors cannot fan out into a
+ * burst of notes) and at most NOTIFY_DAILY_CAP in a day. Both live in KV, whose
+ * reads are edge-cached for ~60s — coarse by design, which is all a cap needs.
+ */
+const NOTIFY_BUCKET_MS = 300_000;
+/** KV's minimum expirationTtl is 60s; two buckets of slack keeps it honest */
+const NOTIFY_BUCKET_TTL = 600;
+const NOTIFY_DAILY_CAP = 200;
+const NOTIFY_DAY_TTL = 90000;
 
-type VisitEnv = Env & { BLACKLISTED_LOCATIONS?: string };
+export type VisitEnv = Env & {
+	BLACKLISTED_LOCATIONS?: string;
+	/** ntfy topic URL, e.g. https://ntfy.sh/<unguessable-topic> — a secret */
+	NTFY_URL?: string;
+	/** optional bearer token for a reserved / self-hosted topic */
+	NTFY_TOKEN?: string;
+};
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
@@ -46,7 +63,7 @@ export default {
 		// ambient visitor trace — a cumulative count plus the previous visitor's
 		// coarse trace. Independent of the Last.fm config below.
 		if (new URL(request.url).pathname === "/visit") {
-			return handleVisit(request, env, cors);
+			return handleVisit(request, env, ctx, cors);
 		}
 
 		if (!env.LASTFM_API_KEY || !env.LASTFM_USERNAME) {
@@ -159,6 +176,7 @@ async function proxyImage(request: Request): Promise<Response> {
 async function handleVisit(
 	request: Request,
 	env: Env,
+	ctx: ExecutionContext,
 	cors: Record<string, string>,
 ): Promise<Response> {
 	const kv = (env as unknown as { VISITS?: KVNamespace }).VISITS;
@@ -195,7 +213,123 @@ async function handleVisit(
 		await kv.put("last", JSON.stringify({ t: now, place }));
 	}
 	await kv.put(seenKey, "1", { expirationTtl: 86400 });
+
+	// push a note about the new visitor — after the response, never blocking it.
+	// Own-location (blacklisted) visits are skipped so local testing stays quiet.
+	if (!isBlacklistedLocation) {
+		const from = new URL(request.url).searchParams.get("from") ?? "";
+		ctx.waitUntil(
+			notifyVisit(env as VisitEnv, kv, {
+				n: total + 1,
+				place,
+				from: referrerHost(from),
+				ua: request.headers.get("User-Agent") ?? "",
+			}),
+		);
+	}
 	return json({ count: total + 1, last }, 200, cors);
+}
+
+/**
+ * Push a "someone visited" note to an ntfy topic. Off by default: with no
+ * NTFY_URL configured this is a no-op. The topic URL is a secret so it never
+ * ships in the site bundle, and the same-day IP dedupe above means a visitor
+ * produces at most one note per day. The KV rate limit below caps the rest:
+ * ntfy.sh's free tier allows 250/day and 60 in a burst, and a spike drops
+ * notes, never the visit. Nothing derived from the topic URL is ever logged.
+ */
+export async function notifyVisit(
+	env: VisitEnv,
+	kv: KVNamespace,
+	v: { n: number; place: string; from: string; ua: string },
+): Promise<void> {
+	if (!env.NTFY_URL) return;
+	if (!(await claimNotifySlot(kv))) return;
+	const where = v.place ? ` from ${v.place}` : "";
+	const via = v.from ? ` via ${v.from}` : "";
+	const headers: Record<string, string> = {
+		Title: `visitor no. ${v.n.toLocaleString("en-US")}`,
+		Tags: "eyes",
+		Priority: "low",
+	};
+	if (env.NTFY_TOKEN) headers.Authorization = `Bearer ${env.NTFY_TOKEN}`;
+	try {
+		const res = await fetch(env.NTFY_URL, {
+			method: "POST",
+			headers,
+			body: `someone is on enochzhu.com${where}${via}\n${deviceHint(v.ua)}`,
+		});
+		await res.body?.cancel();
+		// status only — a runtime fetch error embeds the URL, and that URL is the
+		// secret topic, so neither it nor the error message may reach the log
+		if (!res.ok) {
+			console.log(
+				JSON.stringify({
+					level: "warn",
+					event: "ntfy_rejected",
+					status: res.status,
+				}),
+			);
+		}
+	} catch (err) {
+		console.log(
+			JSON.stringify({
+				level: "warn",
+				event: "ntfy_failed",
+				error: err instanceof Error ? err.name : "unknown",
+			}),
+		);
+	}
+}
+
+/**
+ * Take one notification slot, or report there is none. Coarse on purpose: KV is
+ * eventually consistent, so a simultaneous burst can slip an extra note or two
+ * through — the point is a ceiling, not an exact count.
+ */
+async function claimNotifySlot(kv: KVNamespace): Promise<boolean> {
+	const bucketKey = `ntfy:bucket:${Math.floor(Date.now() / NOTIFY_BUCKET_MS)}`;
+	if (await kv.get(bucketKey)) return false;
+
+	const dayKey = `ntfy:day:${new Date().toISOString().slice(0, 10)}`;
+	const sentToday = parseInt((await kv.get(dayKey)) ?? "0", 10) || 0;
+	if (sentToday >= NOTIFY_DAILY_CAP) return false;
+
+	await kv.put(bucketKey, "1", { expirationTtl: NOTIFY_BUCKET_TTL });
+	await kv.put(dayKey, String(sentToday + 1), { expirationTtl: NOTIFY_DAY_TTL });
+	return true;
+}
+
+/** "https://news.ycombinator.com/item?id=1" → "news.ycombinator.com"; junk → "" */
+export function referrerHost(ref: string): string {
+	if (!ref || !URL.canParse(ref)) return "";
+	const url = new URL(ref);
+	// the value lands in a notification body, so only real web referrers pass:
+	// other schemes (javascript:, data:) and anything that is not a plain
+	// hostname — percent-escapes, spaces, injected punctuation — are dropped
+	if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+	const host = url.hostname.toLowerCase();
+	if (!/^[a-z0-9.-]+$/i.test(host)) return "";
+	// own-site navigation is not a referral
+	if (host === "enochzhu.com" || host.endsWith(".enochzhu.com")) return "";
+	return host.slice(0, 80);
+}
+
+/** coarse, non-identifying device line for the note body */
+function deviceHint(ua: string): string {
+	const os = /iPhone|iPad/.test(ua)
+		? "ios"
+		: /Android/.test(ua)
+			? "android"
+			: /Macintosh/.test(ua)
+				? "macos"
+				: /Windows/.test(ua)
+					? "windows"
+					: /Linux/.test(ua)
+						? "linux"
+						: "unknown os";
+	const kind = /Mobile|iPhone|Android/.test(ua) ? "phone" : "desktop";
+	return `${kind} ・ ${os}`;
 }
 
 /**
