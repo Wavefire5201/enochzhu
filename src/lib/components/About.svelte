@@ -38,6 +38,13 @@
 				<dt class="text-muted">{section.label}</dt>
 				<dd class="text-fg {section.text ? 'whitespace-pre-line' : ''}">
 					{section.items ? section.items.join(", ") : section.text}
+					{#if section.sub}
+						<span class="mt-1 block text-xs text-muted">
+							{#each section.sub as item (item)}
+								<span class="block">{item}</span>
+							{/each}
+						</span>
+					{/if}
 				</dd>
 			{/each}
 		</dl>

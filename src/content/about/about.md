@@ -9,7 +9,7 @@ experience:
     period: summer 2025
     location: doha, qatar (remote)
     link: https://icelisglobal.com/
-    description: "built a time-tracking app (react, firebase) that now runs payroll for 50+ people, an esg reporting platform that generates gri-compliant reports with next.js and llamaindex, and a rag chatbot over 100+ regulatory pdfs."
+    description: "built a time-tracking app for 50+ people with server-authoritative timestamps and a 4-role approval workflow, an esg reporting platform that generates gri-compliant reports from document extractions in postgres, and a rag chatbot over 1,076 pages of sustainability standards with llm query rewriting and page citations."
   - role: swe intern
     organization: bell flight
     period: 2023–2024
@@ -19,14 +19,16 @@ experience:
   - role: director of external technologies
     organization: sustainable building initiative (sbi)
     # comment: i made this website!
-    period: 2024–2026
+    period: aug 2024 – aug 2026
     link: https://utsbi.org/
-    description: "lead a 12-person tech team shipping internal tools for 5 departments and 70+ members: the public site, a client/team portal, and automation for a $25m+ project portfolio."
+    description: "lead a 12-person tech team across 7 repos shipping internal tools for 5 departments and 75+ members: the public site, a next.js and fastapi member portal, and automation for a $200m+ project portfolio. proved zero cross-tenant reads over 21 tenant tables with a 218-assertion pgtap suite in ci and hardened a link unfurler against ssrf and dns rebinding."
 sections:
   - label: education
-    text: |-
-      b.s. computer science, university of texas at austin
-      may 2028
+    text: b.s. computer science, university of texas at austin
+    sub:
+      - minor in statistics and data science
+      - certificate in japanese
+      - aug 2024 – may 2028
   - label: languages
     items:
       - js / ts
@@ -76,8 +78,10 @@ sections:
   - label: ai / ml
     items:
       - rag
+      - vector search
       - hybrid retrieval
       - cross-encoder reranking
+      - query rewriting
       - tool-calling agents
       - mcp
       - embeddings

@@ -34,7 +34,8 @@ export const aboutSchema = z.object({
 	/**
 	 * Freeform, ordered About rows. Add / reorder / rename sections purely in
 	 * about.md — no schema change needed. Each renders a label plus either
-	 * `items` (a separated list) or `text` (a block; newlines preserved).
+	 * `items` (a separated list) or `text` (a block; newlines preserved), with an
+	 * optional `sub` list rendered smaller and muted beneath it, one per line.
 	 */
 	sections: z
 		.array(
@@ -42,6 +43,7 @@ export const aboutSchema = z.object({
 				label: z.string(),
 				items: z.array(z.string()).optional(),
 				text: z.string().optional(),
+				sub: z.array(z.string()).optional(),
 			}),
 		)
 		.default([]),
