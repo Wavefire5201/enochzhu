@@ -73,6 +73,13 @@
 		list-style: disc;
 	}
 
+	.now-prose :global(blockquote) {
+		margin-top: 1rem;
+		padding-left: 1rem;
+		border-left: 1px solid var(--color-line);
+		color: var(--color-muted);
+	}
+
 	.now-prose :global(a) {
 		color: var(--color-bright);
 		text-decoration: underline;

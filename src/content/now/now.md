@@ -1,21 +1,14 @@
 ---
-updated: 2026-08-28
+updated: 2026-10-05
 ---
-
-<!--
-copy this file to now.md and write in your own words (sive.rs/now style):
-what you're focused on right now — school, projects, music, life. a few
-short paragraphs or a list. lowercase, terse. update the date when you edit.
-the page renders the fog 404 until now.md exists; the now-playing widget and
-recently-played list appear below this prose automatically.
--->
 
 ## currently working on
 
-- sbi portal
-- cuaya
-- bell pepper market
+- [cuaya](https://cuaya.co)
+- [bell pepper market](https://bellpepper.shop)
+- [texas marine robotics](https://texasmarinerobotics.com) autonomy stack and website
 - other websites
+- recruiting (open to summer 2027 internship opportunities!)
 
 ## currently reading
 
@@ -25,3 +18,7 @@ recently-played list appear below this prose automatically.
 
 - _claire de lune_ by claude debussy
 - _nocturne in c# minor_ by frédéric chopin
+
+## currently training
+
+- for austin 2027 marathon (full)
